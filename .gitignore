@@ -5,3 +5,4 @@ cmake-*
 build
 .DS_Store
 *.pdf
+src/driver/no-OS-FatFS-SD-SDIO-SPI-RPi-PICO
