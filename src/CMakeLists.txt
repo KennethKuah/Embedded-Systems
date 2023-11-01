@@ -9,6 +9,8 @@ target_link_libraries(
         hardware_gpio
         )
 
+add_subdirectory(console)
+
 # enable usb output
 pico_enable_stdio_usb(src 1)
 
