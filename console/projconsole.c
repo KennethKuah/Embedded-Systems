@@ -20,8 +20,11 @@ int main() {
             recvchar = getchar();
             if (recvchar == '\n')
             {
-                recvbuf[index] = '\0';
                 break;
+            }
+            if (recvchar == '\0')
+            {
+                continue;
             }
 
             recvbuf[index] = recvchar;
