@@ -314,8 +314,7 @@ void key_pressed_func(void *param) {
 }
 
 
-void wifi_scan(){
-    cyw43_arch_enable_sta_mode();
+int wifi_scan(){
     absolute_time_t scan_time = nil_time;
     bool scan_in_progress = false;
     // I need to find a way to break out of the while loop
@@ -336,26 +335,45 @@ void wifi_scan(){
                 scan_in_progress = false; 
             }
         }
+                // the following #ifdef is only here so this same example can be used in multiple modes;
+            // you do not need it in your code
+    #if PICO_CYW43_ARCH_POLL
+            // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
+            // main loop (not from a timer) to check for Wi-Fi driver or lwIP work that needs to be done.
+            cyw43_arch_poll();
+            // you can poll as often as you like, however if you have nothing else to do you can
+            // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
+            cyw43_arch_wait_for_work_until(scan_time);
+    #else
+            // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
+            // is done via interrupt in the background. This sleep is just an example of some (blocking)
+            // work you might be doing.
+            sleep_ms(1000);
+    #endif
+        }
+
+        cyw43_arch_deinit();
+        return 0;
     }
-}
 
 int main() {
     stdio_init_all();
-
+    sleep_ms(5000);
     char copy_ssid_name[100];
     char string_ssid;
     int index = 0;
+    if (cyw43_arch_init()) {
+        DEBUG_printf("failed to initialise\n");
+        return 1;
+    }
+    cyw43_arch_enable_sta_mode();
+    wifi_scan();
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
         DEBUG_printf("failed to allocate state\n");
         return 1;
     }
 
-    if (cyw43_arch_init()) {
-        DEBUG_printf("failed to initialise\n");
-        return 1;
-    }
-    wifi_scan();
     // Get notified if the user presses a key
     state->context = cyw43_arch_async_context();
     key_pressed_worker.user_data = state;
