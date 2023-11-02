@@ -8,6 +8,10 @@
 #include <string.h>
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
+// This will create an array of strings, able to contain 20 strings
+cyw43_ev_scan_result_t* array_of_ssid[20];
+// This counter is used to keep track of how many strings are already stored inside the array
+volatile int ARRAY_CTR = 0;
 
 static int scan_result(void *env, const cyw43_ev_scan_result_t *result) {
     if (result) {
@@ -15,6 +19,11 @@ static int scan_result(void *env, const cyw43_ev_scan_result_t *result) {
             result->ssid, result->rssi, result->channel,
             result->bssid[0], result->bssid[1], result->bssid[2], result->bssid[3], result->bssid[4], result->bssid[5],
             result->auth_mode);
+        if(ARRAY_CTR <= 5){
+            printf("Storing...\n");
+            array_of_ssid[ARRAY_CTR] = result;
+            ARRAY_CTR++;
+        }
     }
     return 0;
 }
@@ -40,10 +49,7 @@ static int scan_result(void *env, const cyw43_ev_scan_result_t *result) {
 
 // The reason why i made this a global variable is because i want to change it.
 char *AP_NAME = "picow_test";
-// This will create an array of strings, able to contain 20 strings
-cyw43_ev_scan_result_t* array_of_ssid[20];
-// This counter is used to keep track of how many strings are already stored inside the array
-volatile int ARRAY_CTR = 0;
+
 
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
@@ -335,6 +341,9 @@ int wifi_scan(){
                 scan_in_progress = false; 
             }
         }
+        if(ARRAY_CTR >= 5){
+            break;
+        }
                 // the following #ifdef is only here so this same example can be used in multiple modes;
             // you do not need it in your code
     #if PICO_CYW43_ARCH_POLL
@@ -368,6 +377,7 @@ int main() {
     }
     cyw43_arch_enable_sta_mode();
     wifi_scan();
+    printf("Exited\n");
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
         DEBUG_printf("failed to allocate state\n");
