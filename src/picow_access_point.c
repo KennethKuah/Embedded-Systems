@@ -9,7 +9,7 @@
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 // This will create an array of strings, able to contain 20 strings
-cyw43_ev_scan_result_t array_of_ssid[15];
+cyw43_ev_scan_result_t array_of_ssid[10];
 // This counter is used to keep track of how many strings are already stored inside the array
 volatile int ARRAY_CTR = 0;
 
@@ -19,7 +19,7 @@ static int scan_result(void *env, const cyw43_ev_scan_result_t *result) {
             result->ssid, result->rssi, result->channel,
             result->bssid[0], result->bssid[1], result->bssid[2], result->bssid[3], result->bssid[4], result->bssid[5],
             result->auth_mode);
-        if(ARRAY_CTR <= 15){
+        if(ARRAY_CTR <= 10){
             array_of_ssid[ARRAY_CTR] = *result;
             ARRAY_CTR++;
         }
@@ -355,7 +355,8 @@ int wifi_scan(){
             // work you might be doing.
             sleep_ms(1000);
     #endif
-            if(ARRAY_CTR >= 15){
+            if(ARRAY_CTR >= 10){
+                printf("fILLED\n");
                 break;
             }
         }
@@ -376,6 +377,7 @@ int main() {
     }
     cyw43_arch_enable_sta_mode();
     wifi_scan();
+    printf("Done\n");
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
         DEBUG_printf("failed to allocate state\n");
@@ -387,11 +389,11 @@ int main() {
     async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
     stdio_set_chars_available_callback(key_pressed_func, state);
 
-    for(int k = 0; k < 15; k++){
+    for(int k = 0; k < 10; k++){
         printf("This is the ssid obained: %-32s\n", array_of_ssid[k].ssid);
         printf("This is the security number obtained: %u\n", array_of_ssid[k].auth_mode);
     }
-    printf("Enter the SSID you want to copy");
+    printf("Enter the SSID you want to copy: ");
     memset(copy_ssid_name, 0, 100);
     while((string_ssid = getchar()) != '\n' && index < sizeof(copy_ssid_name) - 1){
         if(string_ssid != '\0'){
@@ -399,9 +401,16 @@ int main() {
             index++;
         }
     }
-    // printf("This is the name you want to copy: %s\n", copy_ssid_name);
 
-
+    for(int i=0; i < 10; i++){
+        char char_str[50];
+        memset(char_str, 0, 50);
+        strcpy(char_str, (const char*)array_of_ssid[i].ssid);
+        if(strcmp(copy_ssid_name, char_str) == 0){
+            printf("Changing AP Name...\n");
+            strcpy(AP_NAME, copy_ssid_name);
+        }
+    }
     
 #if 1
     const char *password = "password";
