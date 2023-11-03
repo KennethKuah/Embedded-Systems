@@ -9,7 +9,7 @@
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 // This will create an array of strings, able to contain 20 strings
-cyw43_ev_scan_result_t* array_of_ssid[20];
+cyw43_ev_scan_result_t array_of_ssid[15];
 // This counter is used to keep track of how many strings are already stored inside the array
 volatile int ARRAY_CTR = 0;
 
@@ -19,9 +19,8 @@ static int scan_result(void *env, const cyw43_ev_scan_result_t *result) {
             result->ssid, result->rssi, result->channel,
             result->bssid[0], result->bssid[1], result->bssid[2], result->bssid[3], result->bssid[4], result->bssid[5],
             result->auth_mode);
-        if(ARRAY_CTR <= 5){
-            printf("Storing...\n");
-            array_of_ssid[ARRAY_CTR] = result;
+        if(ARRAY_CTR <= 15){
+            array_of_ssid[ARRAY_CTR] = *result;
             ARRAY_CTR++;
         }
     }
@@ -341,9 +340,6 @@ int wifi_scan(){
                 scan_in_progress = false; 
             }
         }
-        if(ARRAY_CTR >= 5){
-            break;
-        }
                 // the following #ifdef is only here so this same example can be used in multiple modes;
             // you do not need it in your code
     #if PICO_CYW43_ARCH_POLL
@@ -359,9 +355,12 @@ int wifi_scan(){
             // work you might be doing.
             sleep_ms(1000);
     #endif
+            if(ARRAY_CTR >= 15){
+                break;
+            }
         }
 
-        cyw43_arch_deinit();
+        // cyw43_arch_deinit();
         return 0;
     }
 
@@ -377,19 +376,22 @@ int main() {
     }
     cyw43_arch_enable_sta_mode();
     wifi_scan();
-    printf("Exited\n");
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
         DEBUG_printf("failed to allocate state\n");
         return 1;
     }
-
     // Get notified if the user presses a key
     state->context = cyw43_arch_async_context();
     key_pressed_worker.user_data = state;
     async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
     stdio_set_chars_available_callback(key_pressed_func, state);
 
+    for(int k = 0; k < 15; k++){
+        printf("This is the ssid obained: %-32s\n", array_of_ssid[k].ssid);
+        printf("This is the security number obtained: %u\n", array_of_ssid[k].auth_mode);
+    }
+    printf("Enter the SSID you want to copy");
     memset(copy_ssid_name, 0, 100);
     while((string_ssid = getchar()) != '\n' && index < sizeof(copy_ssid_name) - 1){
         if(string_ssid != '\0'){
@@ -399,12 +401,7 @@ int main() {
     }
     // printf("This is the name you want to copy: %s\n", copy_ssid_name);
 
-    for(int k = 0; k < 20; k++){
-        printf("This is value: %s", array_of_ssid[k]);
-        // if(array_of_ssid[k] == copy_ssid_name){
-        //     AP_NAME = copy_ssid_name;
-        // }
-    }
+
     
 #if 1
     const char *password = "password";
