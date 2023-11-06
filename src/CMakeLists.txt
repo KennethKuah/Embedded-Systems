@@ -37,7 +37,7 @@ target_link_libraries(picow_access_point_poll
         )
 pico_add_extra_outputs(picow_access_point_poll)
 pico_enable_stdio_usb(picow_access_point_poll 1)
-pico_enable_stdio_uart(picow_access_point_poll 1)
+pico_enable_stdio_uart(picow_access_point_poll 0)
 
 
 

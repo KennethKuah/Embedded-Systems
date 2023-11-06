@@ -1,40 +1,16 @@
-/**
- * Copyright (c) 2022 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
 #include <stdio.h>
 #include <string.h>
+//
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
-// This will create an array of strings, able to contain 20 strings
-cyw43_ev_scan_result_t array_of_ssid[10];
-// This counter is used to keep track of how many strings are already stored inside the array
-volatile int ARRAY_CTR = 0;
-
-static int scan_result(void *env, const cyw43_ev_scan_result_t *result) {
-    if (result) {
-        printf("ssid: %-32s rssi: %4d chan: %3d mac: %02x:%02x:%02x:%02x:%02x:%02x sec: %u\n",
-            result->ssid, result->rssi, result->channel,
-            result->bssid[0], result->bssid[1], result->bssid[2], result->bssid[3], result->bssid[4], result->bssid[5],
-            result->auth_mode);
-        if(ARRAY_CTR <= 10){
-            array_of_ssid[ARRAY_CTR] = *result;
-            ARRAY_CTR++;
-        }
-    }
-    return 0;
-}
-
 #include "hardware/vreg.h"
 #include "hardware/clocks.h"
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
-
+//
 #include "dhcpserver.h"
 #include "dnsserver.h"
-
+//
 #define TCP_PORT 80
 #define DEBUG_printf printf
 #define POLL_TIME_S 5
@@ -45,11 +21,12 @@ static int scan_result(void *env, const cyw43_ev_scan_result_t *result) {
 #define LED_TEST "/ledtest"
 #define LED_GPIO 0
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
+#define MAX_SSID_COUNT 10
 
 // The reason why i made this a global variable is because i want to change it.
-char *AP_NAME = "picow_test";
-
-
+char ap_name[33] = {0};
+cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];
+volatile int ARRAY_CTR = 0;
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
     bool complete;
@@ -263,7 +240,6 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
 
 static bool tcp_server_open(void *arg, const char *ap_name) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    DEBUG_printf("starting server on port %d\n", TCP_PORT);
 
     struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
     if (!pcb) {
@@ -289,136 +265,116 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
     tcp_arg(state->server_pcb, state);
     tcp_accept(state->server_pcb, tcp_server_accept);
 
-    printf("Try connecting to '%s' (press 'd' to disable access point)\n", ap_name);
+    DEBUG_printf("Server started on port %d\n", TCP_PORT);
+    printf("Try connecting to '%s'\n", ap_name);
     return true;
 }
 
-// This "worker" function is called to safely perform work when instructed by key_pressed_func
-void key_pressed_worker_func(async_context_t *context, async_when_pending_worker_t *worker) {
-    assert(worker->user_data);
-    printf("Disabling wifi\n");
-    cyw43_arch_disable_ap_mode();
-    ((TCP_SERVER_T*)(worker->user_data))->complete = true;
-}
+static int add_scan_result(void *env, const cyw43_ev_scan_result_t *result) {
+    if (result){
+        bool found = false;
 
-static async_when_pending_worker_t key_pressed_worker = {
-        .do_work = key_pressed_worker_func
-};
-
-void key_pressed_func(void *param) {
-    assert(param);
-    DEBUG_printf("Entered this function\n");
-    int key = getchar_timeout_us(0); // get any pending key press but don't wait
-    DEBUG_printf("Finished waiting for timeout this function\n");
-    DEBUG_printf("This is char: %d\n", key);
-    if (key == 'd' || key == 'D') {
-        DEBUG_printf("D is being pressed\n");
-        // We are probably in irq context so call wifi in a "worker"
-        async_context_set_work_pending(((TCP_SERVER_T*)param)->context, &key_pressed_worker);
+        for (int i = 0; i < ARRAY_CTR; i++){
+            if (strcmp(array_of_ssid[i].ssid, result->ssid) == 0)
+                found = true;
+        }
+        if (!found) {
+            if(ARRAY_CTR < MAX_SSID_COUNT){
+                array_of_ssid[ARRAY_CTR] = *result;
+                ARRAY_CTR++;
+            }
+        }
     }
+    return 0;
 }
-
 
 int wifi_scan(){
     absolute_time_t scan_time = nil_time;
     bool scan_in_progress = false;
-    // I need to find a way to break out of the while loop
+
     while(true){
         if (absolute_time_diff_us(get_absolute_time(), scan_time) < 0) {
             if (!scan_in_progress) {
                 cyw43_wifi_scan_options_t scan_options = {0};
-                int err = cyw43_wifi_scan(&cyw43_state, &scan_options, NULL, scan_result);
+                int err = cyw43_wifi_scan(&cyw43_state, &scan_options, NULL, add_scan_result);
                 if (err == 0) {
                     printf("\nPerforming wifi scan\n");
                     scan_in_progress = true;
                 } else {
                     printf("Failed to start scan: %d\n", err);
-                    scan_time = make_timeout_time_ms(10000); // wait 10s and scan again
+                    scan_time = make_timeout_time_ms(5000); // wait 5s and scan again
                 }
             } else if (!cyw43_wifi_scan_active(&cyw43_state)) {
-                scan_time = make_timeout_time_ms(10000); // wait 10s and scan again
                 scan_in_progress = false; 
             }
         }
-                // the following #ifdef is only here so this same example can be used in multiple modes;
-            // you do not need it in your code
-    #if PICO_CYW43_ARCH_POLL
-            // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
-            // main loop (not from a timer) to check for Wi-Fi driver or lwIP work that needs to be done.
-            cyw43_arch_poll();
-            // you can poll as often as you like, however if you have nothing else to do you can
-            // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
-            cyw43_arch_wait_for_work_until(scan_time);
-    #else
-            // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
-            // is done via interrupt in the background. This sleep is just an example of some (blocking)
-            // work you might be doing.
-            sleep_ms(1000);
-    #endif
-            if(ARRAY_CTR >= 10){
-                printf("fILLED\n");
-                break;
-            }
-        }
+        cyw43_arch_poll();
+        cyw43_arch_wait_for_work_until(scan_time);
 
-        // cyw43_arch_deinit();
-        return 0;
+        if(ARRAY_CTR == MAX_SSID_COUNT){
+            printf("Scan finished\n");
+            break;
+        }
     }
+    return 0;
+}
 
 int main() {
-    stdio_init_all();
-    sleep_ms(5000);
-    char copy_ssid_name[100];
-    char string_ssid;
-    int index = 0;
-    if (cyw43_arch_init()) {
-        DEBUG_printf("failed to initialise\n");
-        return 1;
-    }
-    cyw43_arch_enable_sta_mode();
-    wifi_scan();
-    printf("Done\n");
+    stdio_usb_init();
+    sleep_ms(3000);
+    char input_buffer[8] = {0};
+    int buf_ptr = 0;
+    int ssid_select = -1;
+    strcpy(ap_name, "picow_test"); // default AP name to connect to
+
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
         DEBUG_printf("failed to allocate state\n");
         return 1;
     }
-    // Get notified if the user presses a key
-    state->context = cyw43_arch_async_context();
-    key_pressed_worker.user_data = state;
-    async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
-    stdio_set_chars_available_callback(key_pressed_func, state);
 
-    for(int k = 0; k < 10; k++){
-        printf("This is the ssid obained: %-32s\n", array_of_ssid[k].ssid);
-        printf("This is the security number obtained: %u\n", array_of_ssid[k].auth_mode);
-    }
-    printf("Enter the SSID you want to copy: ");
-    memset(copy_ssid_name, 0, 100);
-    while((string_ssid = getchar()) != '\n' && index < sizeof(copy_ssid_name) - 1){
-        if(string_ssid != '\0'){
-            copy_ssid_name[index] = string_ssid;
-            index++;
-        }
+    if (cyw43_arch_init()) {
+        DEBUG_printf("failed to initialise\n");
+        return 1;
     }
 
-    for(int i=0; i < 10; i++){
-        char char_str[50];
-        memset(char_str, 0, 50);
-        strcpy(char_str, (const char*)array_of_ssid[i].ssid);
-        if(strcmp(copy_ssid_name, char_str) == 0){
-            printf("Changing AP Name...\n");
-            strcpy(AP_NAME, copy_ssid_name);
+    cyw43_arch_enable_sta_mode();
+    wifi_scan();
+
+    for(int i = 0; i < ARRAY_CTR; i++) {
+        printf("%i. SSID: ", (i + 1));
+        if (strlen(array_of_ssid[i].ssid) == 0)
+            printf("Hidden Network\t");
+        else
+            printf("%s\t", array_of_ssid[i].ssid);
+        printf("AUTH MODE: %u\n", array_of_ssid[i].auth_mode);  
+    }
+
+    printf("Enter the SSID index want to copy: ");
+    while (true) {
+        char c = getchar();
+
+        if (c == '\n' || buf_ptr == 8){
+            input_buffer[buf_ptr] = '\0';
+            ssid_select = atoi(input_buffer);
+            if (ssid_select > 0 && ssid_select <= MAX_SSID_COUNT) {
+                ssid_select--;
+                break;
+            }
+            buf_ptr = 0;
+            printf("You've entered %d\n", ssid_select);
+            printf("The entered number is not in the range of 1 to %d.\n", MAX_SSID_COUNT);
         }
+
+        input_buffer[buf_ptr] = c;
+        buf_ptr++;
     }
     
-#if 1
-    const char *password = "password";
-#else
+    printf("Changing AP Name...\n");
+    strcpy(ap_name, array_of_ssid[ssid_select].ssid);
     const char *password = NULL;
-#endif
 
-    cyw43_arch_enable_ap_mode(AP_NAME, password, CYW43_AUTH_WPA2_AES_PSK);
+    cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
 
     ip4_addr_t mask;
     IP4_ADDR(ip_2_ip4(&state->gw), 192, 168, 4, 1);
@@ -432,7 +388,7 @@ int main() {
     dns_server_t dns_server;
     dns_server_init(&dns_server, &state->gw);
 
-    if (!tcp_server_open(state, AP_NAME)) {
+    if (!tcp_server_open(state, ap_name)) {
         DEBUG_printf("failed to open server\n");
         return 1;
     }
