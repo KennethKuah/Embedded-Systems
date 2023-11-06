@@ -21,12 +21,17 @@
 #define LED_TEST "/ledtest"
 #define LED_GPIO 0
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
-#define MAX_SSID_COUNT 10
+#define MAX_SSID_COUNT 20
 
 // The reason why i made this a global variable is because i want to change it.
 char ap_name[33] = {0};
 cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];
 volatile int ARRAY_CTR = 0;
+volatile bool timer_fired = false;
+volatile uint64_t start_time = 0;
+struct repeating_timer timer;
+volatile bool timeout = false;
+volatile int finished = 0;
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
     bool complete;
@@ -270,18 +275,63 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
     return true;
 }
 
+// This function is used to calc elapsed time
+bool repeating_timer_callback(struct repeating_timer *timer){
+    char buffer[20];
+    uint64_t current_time = time_us_64();
+    // Obtaining the elapsed time in seconds
+    float elapsed_time = (float)(current_time - start_time) / 1000000;
+    // Format the float and store it in the buffer
+    snprintf(buffer, sizeof(buffer), "%04.2f", elapsed_time);
+
+    // Convert the formatted string back to a float
+    float convertedFloat = strtof(buffer, NULL);
+    if (convertedFloat >= 15.00){
+        timeout = true;
+    }
+    return true;
+}
+
+// This function is used to fire the alarm. 
+int64_t alarm_callback(alarm_id_t id, void *user_data) {
+    timer_fired = true;
+    printf("Timer %d fired!\n", (int) id);
+    start_time = time_us_64();
+    // Can return a value here in us to fire in the future
+    return 0;
+}
+
+// Function is used to cancel timer
+bool cancel_timer(struct repeating_timer *timer){
+    timer_fired = false;
+    return cancel_repeating_timer(timer);
+}
+
 static int add_scan_result(void *env, const cyw43_ev_scan_result_t *result) {
     if (result){
         bool found = false;
-
-        for (int i = 0; i < ARRAY_CTR; i++){
-            if (strcmp(array_of_ssid[i].ssid, result->ssid) == 0)
-                found = true;
+        // This is to remove duplicates
+        if(result->auth_mode == 0){
+            for (int i = 0; i < ARRAY_CTR; i++){
+                if (strcmp(array_of_ssid[i].ssid, result->ssid) == 0)
+                    found = true;
+            }
+            if (!found) {
+                if(ARRAY_CTR < MAX_SSID_COUNT){
+                    array_of_ssid[ARRAY_CTR] = *result;
+                    bool cancelled = cancel_timer(&timer);
+                    ARRAY_CTR++;
+                }
+            }
         }
-        if (!found) {
-            if(ARRAY_CTR < MAX_SSID_COUNT){
-                array_of_ssid[ARRAY_CTR] = *result;
-                ARRAY_CTR++;
+        else{
+            if(!timer_fired && finished == 0){
+                add_alarm_in_ms(1000, alarm_callback, NULL, false);
+                while (!timer_fired) {
+                    tight_loop_contents();
+                }
+                // Set to -1000 so that it runs and prints the elapsed time every 1 second
+                add_repeating_timer_ms(-1000, repeating_timer_callback, NULL, &timer);
             }
         }
     }
@@ -291,7 +341,6 @@ static int add_scan_result(void *env, const cyw43_ev_scan_result_t *result) {
 int wifi_scan(){
     absolute_time_t scan_time = nil_time;
     bool scan_in_progress = false;
-
     while(true){
         if (absolute_time_diff_us(get_absolute_time(), scan_time) < 0) {
             if (!scan_in_progress) {
@@ -315,6 +364,14 @@ int wifi_scan(){
             printf("Scan finished\n");
             break;
         }
+        if (timeout)
+        {
+            printf("max timout reached\n");
+            finished = 1;
+            bool cancelled = cancel_timer(&timer);
+            break;
+        }
+        
     }
     return 0;
 }
@@ -337,7 +394,7 @@ int main() {
         DEBUG_printf("failed to initialise\n");
         return 1;
     }
-
+    sleep_ms(10000);
     cyw43_arch_enable_sta_mode();
     wifi_scan();
 
@@ -374,7 +431,8 @@ int main() {
     strcpy(ap_name, array_of_ssid[ssid_select].ssid);
     const char *password = NULL;
 
-    cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
+    // cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
+    cyw43_arch_enable_ap_mode("picow_test", password, CYW43_AUTH_WPA2_AES_PSK);
 
     ip4_addr_t mask;
     IP4_ADDR(ip_2_ip4(&state->gw), 192, 168, 4, 1);
