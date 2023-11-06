@@ -285,7 +285,7 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
         }
         return false;
     }
-
+    printf("Passed everything");
     tcp_arg(state->server_pcb, state);
     tcp_accept(state->server_pcb, tcp_server_accept);
 
