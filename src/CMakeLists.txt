@@ -1,6 +1,6 @@
 # Tell CMake where to find sd card driver source code
-add_subdirectory(driver/no-OS-FatFS-SD-SDIO-SPI-RPi-PICO/src build)
-add_subdirectory(driver)
+add_subdirectory(${PROJECT_SOURCE_DIR}/include/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src build)
+add_subdirectory(sd_helper)
 
 add_executable(src
         main.c
