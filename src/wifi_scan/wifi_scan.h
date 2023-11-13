@@ -5,13 +5,16 @@
 #define MAX_SSID_COUNT 20
 
 // The reason why i made this a global variable is because i want to change it.
-// char ap_name[33] = {0};
-cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];
-volatile int ARRAY_CTR = 0;
-volatile bool timer_fired = false;
-volatile uint64_t start_time = 0;
-struct repeating_timer timer;
-volatile bool timeout = false;
-volatile int finished = 0;
+#ifndef MY_HEADER_H
+#define MY_HEADER_H
+extern cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];
+extern volatile int ARRAY_CTR;
+extern volatile bool timer_fired;
+extern volatile uint64_t start_time;
+extern struct repeating_timer timer;
+extern volatile bool timeout;
+extern volatile int finished;
+#endif
 
-char * setup_wifi_scan();
+
+cyw43_ev_scan_result_t * setup_wifi_scan();

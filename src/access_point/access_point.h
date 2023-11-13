@@ -24,14 +24,13 @@
 #define MAX_SSID_COUNT 20
 
 // The reason why i made this a global variable is because i want to change it.
-char ap_name[33] = {0};
-cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];
-volatile int ARRAY_CTR = 0;
-volatile bool timer_fired = false;
-volatile uint64_t start_time = 0;
-struct repeating_timer timer;
-volatile bool timeout = false;
-volatile int finished = 0;
+// cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];
+// volatile int ARRAY_CTR = 0;
+// volatile bool timer_fired = false;
+// volatile uint64_t start_time = 0;
+// struct repeating_timer timer;
+// volatile bool timeout = false;
+// volatile int finished = 0;
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
     bool complete;
@@ -58,4 +57,4 @@ static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb);
 static void tcp_server_err(void *arg, err_t err);
 static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err);
 static bool tcp_server_open(void *arg, const char *ap_name);
-int setup_ap();
+int setup_ap(cyw43_ev_scan_result_t* test_ssid);

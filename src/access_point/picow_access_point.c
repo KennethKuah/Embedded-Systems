@@ -226,125 +226,14 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
     return true;
 }
 
-// This function is used to calc elapsed time
-bool repeating_timer_callback(struct repeating_timer *timer){
-    char buffer[20];
-    uint64_t current_time = time_us_64();
-    // Obtaining the elapsed time in seconds
-    float elapsed_time = (float)(current_time - start_time) / 1000000;
-    // Format the float and store it in the buffer
-    snprintf(buffer, sizeof(buffer), "%04.2f", elapsed_time);
-
-    // Convert the formatted string back to a float
-    float convertedFloat = strtof(buffer, NULL);
-    if (convertedFloat >= 15.00){
-        timeout = true;
-    }
-    return true;
-}
-
-// This function is used to fire the alarm. 
-int64_t alarm_callback(alarm_id_t id, void *user_data) {
-    timer_fired = true;
-    printf("Timer %d fired!\n", (int) id);
-    start_time = time_us_64();
-    // Can return a value here in us to fire in the future
-    return 0;
-}
-
-// Function is used to cancel timer
-bool cancel_timer(struct repeating_timer *timer){
-    timer_fired = false;
-    return cancel_repeating_timer(timer);
-}
-
-static int add_scan_result(void *env, const cyw43_ev_scan_result_t *result) {
-    if (result){
-        bool found = false;
-        // This is to remove duplicates
-        // if(result->auth_mode == 0){
-        //     for (int i = 0; i < ARRAY_CTR; i++){
-        //         if (strcmp(array_of_ssid[i].ssid, result->ssid) == 0)
-        //             found = true;
-        //     }
-        //     if (!found) {
-        //         if(ARRAY_CTR < MAX_SSID_COUNT){
-        //             array_of_ssid[ARRAY_CTR] = *result;
-        //             bool cancelled = cancel_timer(&timer);
-        //             ARRAY_CTR++;
-        //         }
-        //     }
-        // }
-        for (int i = 0; i < ARRAY_CTR; i++){
-            if (strcmp(array_of_ssid[i].ssid, result->ssid) == 0)
-                found = true;
-        }
-        if (!found) {
-            if(ARRAY_CTR < MAX_SSID_COUNT){
-                array_of_ssid[ARRAY_CTR] = *result;
-                // bool cancelled = cancel_timer(&timer);
-                ARRAY_CTR++;
-            }
-        }
-        // else{
-        //     if(!timer_fired && finished == 0){
-        //         add_alarm_in_ms(1000, alarm_callback, NULL, false);
-        //         while (!timer_fired) {
-        //             tight_loop_contents();
-        //         }
-        //         // Set to -1000 so that it runs and prints the elapsed time every 1 second
-        //         add_repeating_timer_ms(-1000, repeating_timer_callback, NULL, &timer);
-        //     }
-        // }
-    }
-    return 0;
-}
-
-int wifi_scan(){
-    absolute_time_t scan_time = nil_time;
-    bool scan_in_progress = false;
-    while(true){
-        if (absolute_time_diff_us(get_absolute_time(), scan_time) < 0) {
-            if (!scan_in_progress) {
-                cyw43_wifi_scan_options_t scan_options = {0};
-                int err = cyw43_wifi_scan(&cyw43_state, &scan_options, NULL, add_scan_result);
-                if (err == 0) {
-                    printf("\nPerforming wifi scan\n");
-                    scan_in_progress = true;
-                } else {
-                    printf("Failed to start scan: %d\n", err);
-                    scan_time = make_timeout_time_ms(5000); // wait 5s and scan again
-                }
-            } else if (!cyw43_wifi_scan_active(&cyw43_state)) {
-                scan_in_progress = false; 
-            }
-        }
-        cyw43_arch_poll();
-        cyw43_arch_wait_for_work_until(scan_time);
-
-        if(ARRAY_CTR == MAX_SSID_COUNT){
-            printf("Scan finished\n");
-            break;
-        }
-        // if (timeout)
-        // {
-        //     printf("max timout reached\n");
-        //     finished = 1;
-        //     bool cancelled = cancel_timer(&timer);
-        //     break;
-        // }
-        
-    }
-    return 0;
-}
-
-int setup_ap() {
+int setup_ap(cyw43_ev_scan_result_t * test_ssid) {
+    char ap_ssid[33] = {0};
     stdio_usb_init();
     sleep_ms(3000);
     char input_buffer[8] = {0};
     int buf_ptr = 0;
     int ssid_select = -1;
-    strcpy(ap_name, "picow_test"); // default AP name to connect to
+    strcpy(ap_ssid, "picow_test"); // default AP name to connect to
 
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
@@ -357,16 +246,16 @@ int setup_ap() {
         return 1;
     }
     sleep_ms(10000);
-    cyw43_arch_enable_sta_mode();
-    wifi_scan();
+    //cyw43_arch_enable_sta_mode();
+    //wifi_scan();
 
-    for(int i = 0; i < ARRAY_CTR; i++) {
+    for(int i = 0; i < 20; i++) {
         printf("%i. SSID: ", (i + 1));
-        if (strlen(array_of_ssid[i].ssid) == 0)
+        if (strlen(test_ssid[i].ssid) == 0)
             printf("Hidden Network\t");
         else
-            printf("%s\t", array_of_ssid[i].ssid);
-        printf("AUTH MODE: %u\n", array_of_ssid[i].auth_mode);  
+            printf("%s\t", test_ssid[i].ssid);
+        printf("AUTH MODE: %u\n", test_ssid[i].auth_mode);  
     }
 
     printf("Enter the SSID index want to copy: ");
@@ -390,7 +279,7 @@ int setup_ap() {
     }
     
     printf("Changing AP Name...\n");
-    strcpy(ap_name, array_of_ssid[ssid_select].ssid);
+    strcpy(ap_ssid, test_ssid[ssid_select].ssid);
     const char *password = NULL;
 
     // cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
@@ -408,7 +297,7 @@ int setup_ap() {
     dns_server_t dns_server;
     dns_server_init(&dns_server, &state->gw);
 
-    if (!tcp_server_open(state, ap_name)) {
+    if (!tcp_server_open(state, ap_ssid)) {
         DEBUG_printf("failed to open server\n");
         return 1;
     }

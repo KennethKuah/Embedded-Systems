@@ -1,5 +1,12 @@
 #include "wifi_scan.h"
 
+cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];
+volatile int ARRAY_CTR = 0;
+volatile bool timer_fired = false;
+volatile uint64_t start_time = 0;
+volatile bool timeout = false;
+volatile int finished = 0;
+
 // This function is used to calc elapsed time
 bool repeating_timer_callback(struct repeating_timer *timer){
     char buffer[20];
@@ -112,7 +119,7 @@ int wifi_scan(){
     return 0;
 }
 
-char * setup_wifi_scan(){
+cyw43_ev_scan_result_t * setup_wifi_scan(){
     cyw43_arch_enable_sta_mode();
     wifi_scan();
 

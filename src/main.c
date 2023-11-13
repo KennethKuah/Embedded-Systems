@@ -11,10 +11,23 @@
 #define mbaTASK_MESSAGE_BUFFER_SIZE       ( 60 )
 static MessageBufferHandle_t list_of_ssid_buffer;
 
+void wifi_task(__unused void *params){
+    cyw43_ev_scan_result_t * ptr_to_ssid_array;
+    ptr_to_ssid_array = setup_wifi_scan();
+    xMessageBufferSend(list_of_ssid_buffer, (void *) ptr_to_ssid_array, sizeof(ptr_to_ssid_array), 0);
+
+    while(true){
+        vTaskDelay(100);
+    }
+
+    cyw43_arch_deinit();
+}
 
 void ap_task(__unused void *params)
 {
-    setup_ap();
+    cyw43_ev_scan_result_t * fReceivedData;
+    xMessageBufferReceive(list_of_ssid_buffer, (void *)fReceivedData, sizeof(fReceivedData), portMAX_DELAY);
+    setup_ap(fReceivedData);
 
     while (true) {
         // not much to do as LED is in another task, and we're using RAW
@@ -25,17 +38,6 @@ void ap_task(__unused void *params)
     cyw43_arch_deinit();
 }
 
-void wifi_task(__unused void *params){
-    char * ptr_to_ssid_array;
-    ptr_to_ssid_array = setup_wifi_scan();
-    xMessageBufferSend(list_of_ssid_buffer, (void *) ptr_to_ssid_array, sizeof(ptr_to_ssid_array), 0);
-
-    while(true){
-        vTaskDelay(100);
-    }
-
-    cyw43_arch_deinit();
-}
 
 void vLaunch()
 {

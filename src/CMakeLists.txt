@@ -27,6 +27,13 @@ add_executable(src
         dhcpserver/dhcpserver.c
         dnsserver/dnsserver.c
         )
+target_compile_definitions(src PRIVATE
+        WIFI_SSID=\"${WIFI_SSID}\"
+        WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
+        NO_SYS=0            # don't want NO_SYS (generally this would be in your lwipopts.h)
+        LWIP_SOCKET=1       # we need the socket API (generally this would be in your lwipopts.h)
+        LWIP_TIMEVAL_PRIVATE=0 # Use system-wide timeval definition
+)
 target_include_directories(src PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts
