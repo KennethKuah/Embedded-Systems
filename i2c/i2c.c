@@ -73,6 +73,7 @@ static void setup_slave() {
     i2c_init(i2c0, I2C_BAUDRATE);
     // configure I2C0 for slave mode
     i2c_slave_init(i2c0, I2C_SLAVE_ADDRESS, &i2c_slave_handler);
+    
 }
 
 static void run_master() {

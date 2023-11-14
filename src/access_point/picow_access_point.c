@@ -241,10 +241,10 @@ int setup_ap(cyw43_ev_scan_result_t * test_ssid) {
         return 1;
     }
 
-    if (cyw43_arch_init()) {
-        DEBUG_printf("failed to initialise\n");
-        return 1;
-    }
+    // if (cyw43_arch_init()) {
+    //     DEBUG_printf("failed to initialise\n");
+    //     return 1;
+    // }
     sleep_ms(10000);
     //cyw43_arch_enable_sta_mode();
     //wifi_scan();

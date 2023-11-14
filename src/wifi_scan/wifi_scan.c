@@ -87,6 +87,7 @@ int wifi_scan(){
     while(true){
         if (absolute_time_diff_us(get_absolute_time(), scan_time) < 0) {
             if (!scan_in_progress) {
+                printf("Trying to start scan\n");
                 cyw43_wifi_scan_options_t scan_options = {0};
                 int err = cyw43_wifi_scan(&cyw43_state, &scan_options, NULL, add_scan_result);
                 if (err == 0) {
@@ -119,9 +120,19 @@ int wifi_scan(){
     return 0;
 }
 
-cyw43_ev_scan_result_t * setup_wifi_scan(){
+int setup_wifi_scan(){
+    printf("Entered WIFI Scan");
+    if (cyw43_arch_init()) {
+        printf("failed to initialise\n");
+    }
+    printf("After initialised\n");
     cyw43_arch_enable_sta_mode();
+    printf("After cyw43\n");
     wifi_scan();
 
+    return 0;
+}
+
+cyw43_ev_scan_result_t * return_array(){
     return array_of_ssid;
 }
