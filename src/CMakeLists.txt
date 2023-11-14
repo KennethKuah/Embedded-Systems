@@ -1,6 +1,6 @@
 # Tell CMake where to find sd card driver source code
 add_subdirectory(${PROJECT_SOURCE_DIR}/include/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src build)
-add_subdirectory(sd_helper)
+add_subdirectory(pcap_helper)
 
 add_executable(src
         main.c
@@ -12,7 +12,7 @@ target_link_libraries(
         src
         pico_stdlib
         FatFs_SPI
-        SDcard
+        Wifi_SPI
 )
 
 # Enable usb output, disable uart output
