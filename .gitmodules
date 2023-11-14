@@ -1,5 +1,5 @@
-[submodule "src/driver/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico"]
-	path = src/driver/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+[submodule "include/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico"]
+	path = include/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
 	url = https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git
 [submodule "include/picowi"]
 	path = include/picowi
