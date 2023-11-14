@@ -2,11 +2,17 @@ add_executable(src
         main.c
         )
 
+target_include_directories(src PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts
+        )
+
 # pull in common dependencies
 target_link_libraries(
         src
         pico_stdlib
         hardware_gpio
+        pico_cyw43_arch_lwip_threadsafe_background
         )
 
 # enable usb output
