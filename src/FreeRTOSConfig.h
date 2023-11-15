@@ -114,10 +114,6 @@
 #define configSUPPORT_PICO_SYNC_INTEROP         1
 #define configSUPPORT_PICO_TIME_INTEROP         1
 
-#include <assert.h>
-/* Define to trap errors during development. */
-#define configASSERT(x)                         assert(x)
-
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 #define INCLUDE_vTaskPrioritySet                1

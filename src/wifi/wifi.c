@@ -1,4 +1,4 @@
-#include "wifi_scan.h"
+#include "wifi.h"
 
 cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];
 volatile int ARRAY_CTR = 0;

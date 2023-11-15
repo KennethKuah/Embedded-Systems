@@ -5,3 +5,6 @@ cmake-*
 build
 .DS_Store
 *.pdf
+compile_commands.json
+.clangd
+.clang-format
