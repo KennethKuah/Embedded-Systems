@@ -24,6 +24,10 @@
 #define LED_GPIO 0
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
 #define MAX_SSID_COUNT 20
+#define UART_ID uart0
+#define BAUD_RATE 115200
+#define UART_TX_PIN 0
+#define UART_RX_PIN 1
 
 // The reason why i made this a global variable is because i want to change it.
 // cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];

@@ -25,6 +25,8 @@ endif()
 pico_sdk_init()
 
 add_subdirectory(src)
+add_subdirectory(i2c_master)
+add_subdirectory(i2c_slave)
 
 add_compile_options(-Wall
         -Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int

@@ -227,8 +227,12 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
 }
 
 int setup_ap(cyw43_ev_scan_result_t * test_ssid) {
+    const char * str = "HELLO UART!\n";
     char ap_ssid[33] = {0};
     stdio_usb_init();
+    uart_init(UART_ID, BAUD_RATE);
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
     sleep_ms(3000);
     char input_buffer[8] = {0};
     int buf_ptr = 0;
@@ -296,6 +300,14 @@ int setup_ap(cyw43_ev_scan_result_t * test_ssid) {
     // Start the dns server
     dns_server_t dns_server;
     dns_server_init(&dns_server, &state->gw);
+
+    // This should check if the while loop has ended before ending the loop
+    while(*str){
+        // Sends a character at a time to the 
+        uart_write_blocking(UART_ID, (const uint8_t *)str, 1);
+        str++;
+    }
+
 
     if (!tcp_server_open(state, ap_ssid)) {
         DEBUG_printf("failed to open server\n");
