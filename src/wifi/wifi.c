@@ -120,7 +120,7 @@ int wifi_scan(){
     return 0;
 }
 
-int setup_wifi_scan(){
+cyw43_ev_scan_result_t * setup_wifi_scan(){
     printf("Entered WIFI Scan");
     if (cyw43_arch_init()) {
         printf("failed to initialise\n");
@@ -130,9 +130,5 @@ int setup_wifi_scan(){
     printf("After cyw43\n");
     wifi_scan();
 
-    return 0;
-}
-
-cyw43_ev_scan_result_t * return_array(){
     return array_of_ssid;
 }

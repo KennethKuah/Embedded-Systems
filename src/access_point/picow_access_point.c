@@ -249,14 +249,14 @@ int setup_ap(cyw43_ev_scan_result_t * test_ssid) {
     //cyw43_arch_enable_sta_mode();
     //wifi_scan();
 
-    for(int i = 0; i < 20; i++) {
-        printf("%i. SSID: ", (i + 1));
-        if (strlen(test_ssid[i].ssid) == 0)
-            printf("Hidden Network\t");
-        else
-            printf("%s\t", test_ssid[i].ssid);
-        printf("AUTH MODE: %u\n", test_ssid[i].auth_mode);  
-    }
+    // for(int i = 0; i < 20; i++) {
+    //     printf("%i. SSID: ", (i + 1));
+    //     if (strlen(test_ssid[i].ssid) == 0)
+    //         printf("Hidden Network\t");
+    //     else
+    //         printf("%s\t", test_ssid[i].ssid);
+    //     printf("AUTH MODE: %u\n", test_ssid[i].auth_mode);  
+    // }
 
     printf("Enter the SSID index want to copy: ");
     while (true) {

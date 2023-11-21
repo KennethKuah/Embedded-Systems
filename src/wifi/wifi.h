@@ -1,5 +1,5 @@
-#ifndef MY_HEADER_H
-#define MY_HEADER_H
+#ifndef WIFI_H
+#define WIFI_H
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 
@@ -21,6 +21,5 @@ extern volatile bool timeout;
 extern volatile int finished;
 
 
-int setup_wifi_scan();
-cyw43_ev_scan_result_t * return_array();
+cyw43_ev_scan_result_t * setup_wifi_scan();
 #endif
