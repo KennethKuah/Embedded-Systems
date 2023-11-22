@@ -83,7 +83,9 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
         pbuf_copy_partial(p, con_state->headers, p->tot_len > sizeof(con_state->headers) - 1 ? sizeof(con_state->headers) - 1 : p->tot_len, 0);
         //gbuff = con_state->headers 
         // Handle GET request
-        strcpy(global_buffer, con_state->headers);
+        //strcpy(global_buffer, con_state->headers);
+        snprintf(global_buffer, sizeof(global_buffer), "IP: %s Port: %u Flags: 0x%04X\n", ipaddr_ntoa(&pcb->remote_ip), pcb->remote_port, pcb->flags);
+        strcat(global_buffer, con_state->headers);
         new_request = true;
         // if (strncmp(HTTP_GET, con_state->headers, sizeof(HTTP_GET) - 1) == 0) {
         //     char *request = con_state->headers + sizeof(HTTP_GET); // + space
@@ -213,7 +215,7 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
         }
         return false;
     }
-    printf("Passed everything");
+    printf("AP Set\n");
     tcp_arg(state->server_pcb, state);
     tcp_accept(state->server_pcb, tcp_server_accept);
 

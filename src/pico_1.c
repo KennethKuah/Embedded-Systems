@@ -50,7 +50,6 @@ void ap_task(__unused void *params) {
     }
     strcpy(newapname,setup_ap(fReceivedData));
     set_ap = true;
-    printf("finish");
     while (true) {
         // not much to do as LED is in another task, and we're using RAW
         // (callback) lwIP API
@@ -67,7 +66,7 @@ void web_task(__unused void *params)
     {
         vTaskDelay(100);
     }
-    printf("Server starting %s", newapname);
+    printf("Server starting %s\n", newapname);
     setup_web_server(newapname);
     while (true) {
         // not much to do as LED is in another task, and we're using RAW
@@ -85,6 +84,7 @@ void test_task(__unused void *params)
         if (new_request)
         {
             printf("%s\n", global_buffer);
+            printf("len:%d|%d\n", strlen(global_buffer), sizeof(global_buffer));
             printf("=====================\n");
             new_request = false;
         }

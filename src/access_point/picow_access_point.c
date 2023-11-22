@@ -27,13 +27,7 @@ char* setup_ap(cyw43_ev_scan_result_t * ssid_array)
         buf_ptr++;
     }
     
-    printf("Changing AP Name...\n");
     return ssid_array[ssid_select].ssid;
-    strcpy(ap_ssid, ssid_array[ssid_select].ssid);
-    const char *password = NULL;
-
-    cyw43_arch_enable_ap_mode(ap_ssid, password, CYW43_AUTH_WPA2_AES_PSK);
-    set_ap = true;
 }
 
 int setup_ap_old(cyw43_ev_scan_result_t * test_ssid) {
