@@ -3,10 +3,20 @@ cmake_minimum_required(VERSION 3.12)
 # Pull in SDK (must be before project)
 include(pico_sdk_import.cmake)
 
+# For RTOS
+if (NOT FREERTOS_KERNEL_PATH AND NOT DEFINED ENV{FREERTOS_KERNEL_PATH})
+    message("Skipping Pico W FreeRTOS examples as FREERTOS_KERNEL_PATH not defined")
+else()
+    include(FreeRTOS_Kernel_import.cmake)
+endif()
+
 project(Embedded-Systems C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(PICO_BOARD pico_w)
+# pico 2 wifi connection
+set(WIFI_SSID the-aquarium)
+set(WIFI_PASSWORD withpassionandethics)
 
 if (PICO_SDK_VERSION_STRING VERSION_LESS "1.3.0")
     message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.3.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
