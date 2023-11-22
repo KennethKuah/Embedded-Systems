@@ -5,12 +5,12 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
+#define MAIN_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 
 void main_task(__unused void *params)
 {
     setup_wifi();
-
+    test_conns();
     while (true) {
         // not much to do as LED is in another task, and we're using RAW
         // (callback) lwIP API
@@ -24,8 +24,8 @@ void vLaunch()
 {
 
     TaskHandle_t task;
-    xTaskCreate(main_task, "TestMainThread", configMINIMAL_STACK_SIZE, NULL,
-                TEST_TASK_PRIORITY, &task);
+    xTaskCreate(main_task, "MainThread", configMINIMAL_STACK_SIZE, NULL,
+                MAIN_TASK_PRIORITY, &task);
 
     vTaskStartScheduler();
 }
