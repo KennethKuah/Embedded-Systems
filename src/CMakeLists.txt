@@ -4,6 +4,7 @@ add_executable(src
         access_point/picow_access_point.c
         dnsserver/dnsserver.c
         dhcpserver/dhcpserver.c
+        i2c_helper/i2c.c
         )
 
 target_include_directories(src PRIVATE 
@@ -11,6 +12,7 @@ target_include_directories(src PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/..
         ${CMAKE_CURRENT_LIST_DIR}/dhcpserver
         ${CMAKE_CURRENT_LIST_DIR}/dnsserver
+        ${CMAKE_CURRENT_LIST_DIR}/i2c_helper
         )
 
 target_compile_definitions(src PRIVATE
@@ -29,6 +31,8 @@ target_link_libraries(
         hardware_gpio
         pico_lwip_iperf
         FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
+        pico_i2c_slave
+        hardware_i2c
         )
 
 # enable usb output
