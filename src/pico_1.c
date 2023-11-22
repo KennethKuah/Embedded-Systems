@@ -17,9 +17,9 @@
 #define mbaTASK_MESSAGE_BUFFER_SIZE       ( 60 )
 static MessageBufferHandle_t list_of_ssid_buffer;
 
-extern bool newap = false;
-extern bool testingg = false;
-extern char gbuff[512] = {0};
+extern bool set_ap = false;
+extern bool new_request = false;
+extern char global_buffer[512] = {0};
 char newapname[64] = {0};
 
 void scan_task(__unused void *params) {
@@ -49,7 +49,7 @@ void ap_task(__unused void *params) {
         printf("AUTH MODE: %u\n", fReceivedData[i].auth_mode); 
     }
     strcpy(newapname,setup_ap(fReceivedData));
-    newap = true;
+    set_ap = true;
     printf("finish");
     while (true) {
         // not much to do as LED is in another task, and we're using RAW
@@ -63,7 +63,7 @@ void ap_task(__unused void *params) {
 
 void web_task(__unused void *params)
 {
-    while (!newap)
+    while (!set_ap)
     {
         vTaskDelay(100);
     }
@@ -82,11 +82,11 @@ void test_task(__unused void *params)
     while (true) {
         // not much to do as LED is in another task, and we're using RAW
         // (callback) lwIP API
-        if (testingg)
+        if (new_request)
         {
-            printf("%s\n", gbuff);
+            printf("%s\n", global_buffer);
             printf("=====================\n");
-            testingg = false;
+            new_request = false;
         }
         vTaskDelay(100);
     }

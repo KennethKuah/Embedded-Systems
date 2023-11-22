@@ -52,8 +52,6 @@ static int test_server_content(const char *request, const char *params, char *re
             //WIFI SCAN
             char joined[200];
             int offset = 0;
-            //new_scan_main();
-            //testingg = true;
             for (int i = 0; i < 5; i++)//ARRAY_CTR; i++)
             {
                 offset += snprintf(joined + offset, sizeof(joined) - offset, "<option value='%d'>%d</option>", i, i);//array_of_ssid[i].ssid);
@@ -85,8 +83,8 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
         pbuf_copy_partial(p, con_state->headers, p->tot_len > sizeof(con_state->headers) - 1 ? sizeof(con_state->headers) - 1 : p->tot_len, 0);
         //gbuff = con_state->headers 
         // Handle GET request
-        strcpy(gbuff, con_state->headers);
-        testingg = true;
+        strcpy(global_buffer, con_state->headers);
+        new_request = true;
         // if (strncmp(HTTP_GET, con_state->headers, sizeof(HTTP_GET) - 1) == 0) {
         //     char *request = con_state->headers + sizeof(HTTP_GET); // + space
         //     char *params = strchr(request, '?');

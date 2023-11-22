@@ -31,7 +31,7 @@
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
 
-extern bool newap;
+extern bool set_ap;
 
 // The reason why i made this a global variable is because i want to change it.
 // cyw43_ev_scan_result_t array_of_ssid[MAX_SSID_COUNT];

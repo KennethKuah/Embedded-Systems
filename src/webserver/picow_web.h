@@ -27,8 +27,8 @@
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" CONTROL_PANEL "\n\n"
 #define MAX_SSID_COUNT 20
 
-extern bool testingg;
-extern char gbuff[512];
+extern bool new_request;
+extern char global_buffer[512];
 
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;

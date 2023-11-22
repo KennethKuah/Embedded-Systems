@@ -33,7 +33,7 @@ char* setup_ap(cyw43_ev_scan_result_t * ssid_array)
     const char *password = NULL;
 
     cyw43_arch_enable_ap_mode(ap_ssid, password, CYW43_AUTH_WPA2_AES_PSK);
-    newap = true;
+    set_ap = true;
 }
 
 int setup_ap_old(cyw43_ev_scan_result_t * test_ssid) {
