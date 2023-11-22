@@ -78,11 +78,11 @@ int send_slave(char * msg) {
         if (pending_msg_len > (MAX_BUF_LEN - 1)){
             memcpy(buf + 1, msg, MAX_BUF_LEN - 1);
             msg += MAX_BUF_LEN - 1;
-            bytes_written = i2c_write_blocking(i2c_slave_channel, I2C_SLAVE_ADDRESS, buf, MAX_BUF_LEN, false);
+            bytes_written = i2c_write_blocking(i2c_master_channel, I2C_SLAVE_ADDRESS, buf, MAX_BUF_LEN, false);
         } else { 
             memcpy(buf + 1, msg, pending_msg_len);
             msg += pending_msg_len;
-            bytes_written = i2c_write_blocking(i2c_slave_channel, I2C_SLAVE_ADDRESS, buf, pending_msg_len + 1, false);
+            bytes_written = i2c_write_blocking(i2c_master_channel, I2C_SLAVE_ADDRESS, buf, pending_msg_len + 1, false);
         }
         if (bytes_written < 0) {
             puts("Couldn't write to slave, please check your wiring!");
