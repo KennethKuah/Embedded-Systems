@@ -1,4 +1,4 @@
-#include "picow_access_point.h"
+#include "picow_web.h"
 
 static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct tcp_pcb *client_pcb, err_t close_err) {
     if (client_pcb) {
@@ -225,7 +225,6 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
 }
 
 int setup_web_server() {
-    stdio_init_all();
 
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
@@ -237,10 +236,6 @@ int setup_web_server() {
         DEBUG_printf("failed to initialise\n");
         return 1;
     }
-    const char *password = NULL;
-
-    // cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
-    cyw43_arch_enable_ap_mode("picowtesting", password, CYW43_AUTH_WPA2_AES_PSK);
 
     ip4_addr_t mask;
     IP4_ADDR(ip_2_ip4(&state->gw), 192, 168, 4, 1);

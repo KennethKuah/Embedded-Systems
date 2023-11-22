@@ -12,11 +12,14 @@
 
 #include "dnsserver.h"
 #include "lwip/udp.h"
+#include "lwip/ip_addr.h"
+#include "lwip/ip4_addr.h"
 
+#define MAX_DOMAIN_LEN 253
 #define PORT_DNS_SERVER 53
 #define DUMP_DATA 0
 
-#define DEBUG_printf(...)
+#define DEBUG_printf printf
 #define ERROR_printf printf
 
 typedef struct dns_header_t_ {
@@ -101,6 +104,9 @@ static int dns_socket_sendto(struct udp_pcb **udp, const void *buf, size_t len, 
 }
 
 static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port) {
+    // Sends the DNS request to PicoW 2 for an authorative answer
+    // over UART/I2C. Once it receives the answer, it sends it back to
+    // the client that sent the DNS request.
     dns_server_t *d = arg;
     DEBUG_printf("dns_server_process %u\n", p->tot_len);
 
@@ -151,6 +157,9 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     const uint8_t *question_ptr_start = dns_msg + sizeof(dns_header_t);
     const uint8_t *question_ptr_end = dns_msg + msg_len;
     const uint8_t *question_ptr = question_ptr_start;
+    char dns_domain[MAX_DOMAIN_LEN];
+    char* dns_ptr = dns_domain;
+    int dns_type = *(question_ptr_end - 3);
     while(question_ptr < question_ptr_end) {
         if (*question_ptr == 0) {
             question_ptr++;
@@ -158,6 +167,8 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
         } else {
             if (question_ptr > question_ptr_start) {
                 DEBUG_printf(".");
+                strncpy(dns_ptr, ".", 1);
+                dns_ptr++;
             }
             int label_len = *question_ptr++;
             if (label_len > 63) {
@@ -165,6 +176,8 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
                 goto ignore_request;
             }
             DEBUG_printf("%.*s", label_len, question_ptr);
+            snprintf(dns_ptr, sizeof(dns_domain),"%.*s", label_len, question_ptr);
+            dns_ptr += label_len;
             question_ptr += label_len;
         }
     }
@@ -197,7 +210,15 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
 
     *answer_ptr++ = 0;
     *answer_ptr++ = 4; // length
-    memcpy(answer_ptr, &d->ip.addr, 4); // use our address
+    printf("sending to pico2\n");
+    send_slave(dns_domain);
+    char* ans = recv_from_master();
+    //struct i2c_response resp = i2c_serialize("8.8.8.8", PORT_DNS_SERVER, "DNS", dns_domain, dns_type);
+    printf("Received from master: %s\n", ans);
+    ip_addr_t result_ipaddr;
+    IP4_ADDR(ip_2_ip4(&result_ipaddr), 127, 0, 0, 1);
+    memcpy(answer_ptr, &result_ipaddr.addr, 4);
+
     answer_ptr += 4;
 
     dns_hdr->flags = lwip_htons(

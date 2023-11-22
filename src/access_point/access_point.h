@@ -13,6 +13,8 @@
 #include "dhcpserver.h"
 #include "dnsserver.h"
 //
+#include "webserver/picow_web.h"
+
 #define TCP_PORT 80
 #define DEBUG_printf printf
 #define POLL_TIME_S 5
@@ -37,24 +39,8 @@
 // struct repeating_timer timer;
 // volatile bool timeout = false;
 // volatile int finished = 0;
-typedef struct TCP_SERVER_T_ {
-    struct tcp_pcb *server_pcb;
-    bool complete;
-    ip_addr_t gw;
-    async_context_t *context;
-} TCP_SERVER_T;
 
-typedef struct TCP_CONNECT_STATE_T_ {
-    struct tcp_pcb *pcb;
-    int sent_len;
-    char headers[128];
-    char result[256];
-    int header_len;
-    int result_len;
-    ip_addr_t *gw;
-} TCP_CONNECT_STATE_T;
-
-
-int setup_ap(cyw43_ev_scan_result_t* test_ssid);
+int setup_ap(cyw43_ev_scan_result_t* ssid_array);
+int setup_ap_old(cyw43_ev_scan_result_t* test_ssid);
 
 #endif

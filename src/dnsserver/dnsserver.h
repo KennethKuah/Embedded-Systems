@@ -8,6 +8,7 @@
 #define _DNSSERVER_H_
 
 #include "lwip/ip_addr.h"
+#include "../i2c_helper/i2c.h"
 
 typedef struct dns_server_t_ {
     struct udp_pcb *udp;

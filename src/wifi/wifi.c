@@ -129,6 +129,7 @@ cyw43_ev_scan_result_t * setup_wifi_scan(){
     cyw43_arch_enable_sta_mode();
     printf("After cyw43\n");
     wifi_scan();
+    cyw43_arch_deinit();
 
     return array_of_ssid;
 }
