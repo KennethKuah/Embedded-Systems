@@ -1,5 +1,71 @@
 #include "picow_access_point.h"
-//#include "wifi_scan.h"
+
+static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct tcp_pcb *client_pcb, err_t close_err) {
+    if (client_pcb) {
+        assert(con_state && con_state->pcb == client_pcb);
+        tcp_arg(client_pcb, NULL);
+        tcp_poll(client_pcb, NULL, 0);
+        tcp_sent(client_pcb, NULL);
+        tcp_recv(client_pcb, NULL);
+        tcp_err(client_pcb, NULL);
+        err_t err = tcp_close(client_pcb);
+        if (err != ERR_OK) {
+            DEBUG_printf("close failed %d, calling abort\n", err);
+            tcp_abort(client_pcb);
+            close_err = ERR_ABRT;
+        }
+        if (con_state) {
+            free(con_state);
+        }
+    }
+    return close_err;
+}
+
+static void tcp_server_close(TCP_SERVER_T *state) {
+    if (state->server_pcb) {
+        tcp_arg(state->server_pcb, NULL);
+        tcp_close(state->server_pcb);
+        state->server_pcb = NULL;
+    }
+}
+
+static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
+    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
+    DEBUG_printf("tcp_server_sent %u\n", len);
+    con_state->sent_len += len;
+    if (con_state->sent_len >= con_state->header_len + con_state->result_len) {
+        DEBUG_printf("all done\n");
+        return tcp_close_client_connection(con_state, pcb, ERR_OK);
+    }
+    return ERR_OK;
+}
+
+static int test_server_content(const char *request, const char *params, char *result, size_t max_result_len) {
+    int len = 0;
+    if (strncmp(request, "/commands", sizeof("/commands") - 1) == 0) {
+        // Obtain parameters from webpage
+        int commands = 0;
+        //DEBUG_printf("Command: %d", )
+        sscanf(params, COMMAND, &commands);
+        if (commands == 1)
+        {
+            //WIFI SCAN
+            char joined[200];
+            int offset = 0;
+            //new_scan_main();
+            //testingg = true;
+            for (int i = 0; i < 5; i++)//ARRAY_CTR; i++)
+            {
+                offset += snprintf(joined + offset, sizeof(joined) - offset, "<option value='%d'>%d</option>", i, i);//array_of_ssid[i].ssid);
+            }
+            //offset += snprintf(joined + offset, sizeof(joined) - offset, )
+            len = snprintf(result, max_result_len, RESULTS_PAGE, joined);
+            return len;
+        }
+        len = snprintf(result, max_result_len, CONTROL_PANEL_BODY);
+    }
+    return len;
+}
 
 err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
@@ -83,6 +149,79 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     }
     pbuf_free(p);
     return ERR_OK;
+}
+
+static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb) {
+    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
+    DEBUG_printf("tcp_server_poll_fn\n");
+    return tcp_close_client_connection(con_state, pcb, ERR_OK); // Just disconnect clent?
+}
+
+static void tcp_server_err(void *arg, err_t err) {
+    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
+    if (err != ERR_ABRT) {
+        DEBUG_printf("tcp_client_err_fn %d\n", err);
+        tcp_close_client_connection(con_state, con_state->pcb, err);
+    }
+}
+
+static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {
+    TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
+    if (err != ERR_OK || client_pcb == NULL) {
+        DEBUG_printf("failure in accept\n");
+        return ERR_VAL;
+    }
+    DEBUG_printf("client connected\n");
+
+    // Create the state for the connection
+    TCP_CONNECT_STATE_T *con_state = calloc(1, sizeof(TCP_CONNECT_STATE_T));
+    if (!con_state) {
+        DEBUG_printf("failed to allocate connect state\n");
+        return ERR_MEM;
+    }
+    con_state->pcb = client_pcb; // for checking
+    con_state->gw = &state->gw;
+
+    // setup connection to client
+    tcp_arg(client_pcb, con_state);
+    tcp_sent(client_pcb, tcp_server_sent);
+    tcp_recv(client_pcb, tcp_server_recv);
+    tcp_poll(client_pcb, tcp_server_poll, POLL_TIME_S * 2);
+    tcp_err(client_pcb, tcp_server_err);
+
+    return ERR_OK;
+}
+
+static bool tcp_server_open(void *arg, const char *ap_name) {
+    TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
+
+    struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
+    if (!pcb) {
+        DEBUG_printf("failed to create pcb\n");
+        return false;
+    }
+
+    err_t err = tcp_bind(pcb, IP_ANY_TYPE, TCP_PORT);
+    if (err) {
+        DEBUG_printf("failed to bind to port %d\n",TCP_PORT);
+        return false;
+    }
+
+    state->server_pcb = tcp_listen_with_backlog(pcb, 1);
+    if (!state->server_pcb) {
+        DEBUG_printf("failed to listen\n");
+        if (pcb) {
+            tcp_close(pcb);
+        }
+        return false;
+    }
+    printf("Passed everything");
+    tcp_arg(state->server_pcb, state);
+    tcp_accept(state->server_pcb, tcp_server_accept);
+
+    DEBUG_printf("Server started on port %d\n", TCP_PORT);
+    printf("Try connecting to '%s'\n", ap_name);
+    return true;
 }
 
 int setup_web_server() {
