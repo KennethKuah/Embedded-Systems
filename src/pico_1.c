@@ -1,12 +1,15 @@
-#include "pico/stdlib.h"
-#include "wifi/wifi.h"
-#include "pico/cyw43_arch.h"
-#include "access_point/access_point.h"
 #include <stdio.h>
-
+//
+#include "pico/stdlib.h"
+#include "pico/cyw43_arch.h"
+//
 #include "FreeRTOS.h"
 #include "task.h"
 #include "message_buffer.h"
+//
+#include "access_point/access_point.h"
+#include "wifi/wifi.h"
+#include "i2c_helper/i2c.h"
 
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 #define PRINT_TASK_PRIORITY (tskIDLE_PRIORITY + 5UL)
@@ -68,6 +71,7 @@ void vLaunch() {
 int main() {
     // main body of code
     stdio_init_all();
+    init_pico_1();
     sleep_ms(3000);
     const char *rtos_name = "FreeRTOS";
     printf("Starting %s on core 0:\n", rtos_name);

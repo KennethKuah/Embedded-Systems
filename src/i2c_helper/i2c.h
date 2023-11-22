@@ -1,11 +1,12 @@
 #ifndef I2C_HEADER_H
 #define I2C_HEADER_H
-#include <hardware/i2c.h>
-#include <pico/i2c_slave.h>
-#include <pico/stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#define MAX_BUF_LEN 2048
+#include <pico/i2c_slave.h>
+#include <pico/stdlib.h>
+#include <hardware/i2c.h>
+
+#define MAX_BUF_LEN 256
 
 static const uint I2C_SLAVE_ADDRESS = 0x04;
 static const uint I2C_CLIENT_ADDRESS = 0x17;
@@ -26,11 +27,13 @@ static bool finishedReceiving = false;
 // sequentially from the current memory address.
 static struct
 {
-    uint8_t mem[256];
+    uint8_t mem[MAX_BUF_LEN];
     uint8_t mem_address;
     bool mem_address_written;
 } context;
 
-int master(char * packet_data);
-char * recv_from_master();
+int send_slave(char * msg);
+char* recv_from_master();
+void init_pico_1();
+void init_pico_2();
 #endif
