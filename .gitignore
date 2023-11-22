@@ -6,3 +6,6 @@ build
 .DS_Store
 *.pdf
 include/no-OS-FatFS-SD-SDIO-SPI-RPi-PICO
+compile_commands.json
+.clang-format
+.clangd
