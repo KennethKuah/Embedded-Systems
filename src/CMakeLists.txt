@@ -1,9 +1,11 @@
 add_executable(src
         main.c
-        wifi/wifi.c
-        access_point/picow_access_point.c
+        #wifi/wifi.c
+        #access_point/picow_access_point.c
+        #web/web.c
         dnsserver/dnsserver.c
         dhcpserver/dhcpserver.c
+        webserver/picow_access_point.c
         )
 
 target_include_directories(src PRIVATE 
