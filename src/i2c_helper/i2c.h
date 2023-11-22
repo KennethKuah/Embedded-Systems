@@ -1,12 +1,16 @@
 #ifndef I2C_HEADER_H
 #define I2C_HEADER_H
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <pico/i2c_slave.h>
 #include <pico/stdlib.h>
 #include <hardware/i2c.h>
+#include "common/b64.h"
 
 #define MAX_BUF_LEN 256
+#define MAX_MESSAGE_SIZE 30000
+#define DELIMITER ":"
 
 static const uint I2C_SLAVE_ADDRESS = 0x04;
 static const uint I2C_CLIENT_ADDRESS = 0x17;
@@ -32,8 +36,21 @@ static struct
     bool mem_address_written;
 } context;
 
+typedef unsigned char BYTE;
+
+typedef struct {
+    char *dst_ip;
+    int port;
+    char *proto;
+    BYTE *data;
+    int data_len;
+} I2CData;
+
 int send_slave(char * msg);
 char* recv_from_master();
 void init_pico_1();
 void init_pico_2();
+char *i2c_serialize(char *, int, char *, BYTE *, int);
+I2CData *i2c_deserialize(char *);
+
 #endif

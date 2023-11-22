@@ -5,14 +5,12 @@ add_executable(pico_1
         dnsserver/dnsserver.c
         dhcpserver/dhcpserver.c
         i2c_helper/i2c.c
+        common/b64.c
         )
 
 target_include_directories(pico_1 PRIVATE 
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/..
-        ${CMAKE_CURRENT_LIST_DIR}/dhcpserver
-        ${CMAKE_CURRENT_LIST_DIR}/dnsserver
-        ${CMAKE_CURRENT_LIST_DIR}/i2c_helper
         )
 
 target_compile_definitions(pico_1 PRIVATE

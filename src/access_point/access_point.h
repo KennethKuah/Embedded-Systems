@@ -10,8 +10,8 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 //
-#include "dhcpserver.h"
-#include "dnsserver.h"
+#include "dhcpserver/dhcpserver.h"
+#include "dnsserver/dnsserver.h"
 //
 #define TCP_PORT 80
 #define DEBUG_printf printf
@@ -23,7 +23,7 @@
 #define LED_TEST "/ledtest"
 #define LED_GPIO 0
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
-#define MAX_SSID_COUNT 20
+#define MAX_SSID_COUNT 5
 #define UART_ID uart0
 #define BAUD_RATE 115200
 #define UART_TX_PIN 0
