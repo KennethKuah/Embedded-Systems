@@ -6,6 +6,7 @@ add_executable(pico_1
         dhcpserver/dhcpserver.c
         i2c_helper/i2c.c
         common/b64.c
+        webserver/picow_web.c
         )
 
 target_include_directories(pico_1 PRIVATE 
