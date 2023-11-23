@@ -21,8 +21,22 @@ extern bool set_ap = false;
 extern bool new_request = false;
 extern char global_buffer[512] = {0};
 char newapname[64] = {0};
+bool skip_scan = false;
 
 void scan_task(__unused void *params) {
+    if (skip_scan)
+    {    
+        if (cyw43_arch_init()) {
+            printf("failed to initialise\n");
+        }
+        printf("After initialised\n");
+        cyw43_arch_enable_sta_mode();
+        printf("After cyw43\n");
+    }
+    while(skip_scan)
+    {
+        vTaskDelay(100);
+    }
     cyw43_ev_scan_result_t * ptr_to_ssid_array = setup_wifi_scan();
 
     while (true) {
@@ -34,6 +48,10 @@ void scan_task(__unused void *params) {
 }
 
 void ap_task(__unused void *params) {
+    while(skip_scan)
+    {
+        vTaskDelay(100);
+    }
     cyw43_ev_scan_result_t * fReceivedData;
     size_t xReceivedBytes = 0;
     while(xReceivedBytes == 0){
@@ -58,6 +76,13 @@ void ap_task(__unused void *params) {
 
     cyw43_arch_deinit();
 
+}
+
+void skip_scanning()
+{
+    skip_scan = true;
+    strcpy(newapname, "DEFAULTPICOW");
+    set_ap = true;
 }
 
 void web_task(__unused void *params)
@@ -122,6 +147,7 @@ int main() {
     const char *rtos_name = "FreeRTOS";
     printf("Starting %s on core 0:\n", rtos_name);
 
+    skip_scanning();
     vLaunch();
 
     return 0;

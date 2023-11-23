@@ -183,6 +183,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
         }
     }
     DEBUG_printf("\n");
+    printf("Domain: %s\n", dns_domain);
 
     // Check question length
     if (question_ptr - question_ptr_start > 255) {
@@ -211,16 +212,18 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
 
     *answer_ptr++ = 0;
     *answer_ptr++ = 4; // length
-    printf("sending serialized data to pico2\n");
-    char *data = i2c_serialize(dns_domain, 53, "UDP", &dns_type, sizeof(dns_type));
-    send_slave(data);
-    printf("waiting for reply from pico2\n");
-    I2CData *i2c_data = i2c_deserialize(recv_from_master());
-    //struct i2c_response resp = i2c_serialize("8.8.8.8", PORT_DNS_SERVER, "DNS", dns_domain, dns_type);
-    printf("Received from master: %s\n", i2c_data->data);
-    free(i2c_data);
+    // //////
+    // printf("sending serialized data to pico2\n");
+    // char *data = i2c_serialize(dns_domain, 53, "UDP", &dns_type, sizeof(dns_type));
+    // send_slave(data);
+    // printf("waiting for reply from pico2\n");
+    // I2CData *i2c_data = i2c_deserialize(recv_from_master());
+    // //struct i2c_response resp = i2c_serialize("8.8.8.8", PORT_DNS_SERVER, "DNS", dns_domain, dns_type);
+    // printf("Received from master: %s\n", i2c_data->data);
+    // free(i2c_data);
+    // ////
     ip_addr_t result_ipaddr;
-    IP4_ADDR(ip_2_ip4(&result_ipaddr), 127, 0, 0, 1);
+    IP4_ADDR(ip_2_ip4(&result_ipaddr), 192, 168, 4, 1);
     memcpy(answer_ptr, &result_ipaddr.addr, 4);
 
     answer_ptr += 4;

@@ -249,8 +249,8 @@ int setup_web_server(char* newname) {
     dhcp_server_init(&dhcp_server, &state->gw, &mask);
 
     // Start the dns server
-    // dns_server_t dns_server;
-    // dns_server_init(&dns_server, &state->gw);
+    dns_server_t dns_server;
+    dns_server_init(&dns_server, &state->gw);
 
     // if (!tcp_server_open(state, ap_name)) {
     //     DEBUG_printf("failed to open server\n");
@@ -281,7 +281,7 @@ int setup_web_server(char* newname) {
 #endif
     }
     tcp_server_close(state);
-    //dns_server_deinit(&dns_server);
+    dns_server_deinit(&dns_server);
     dhcp_server_deinit(&dhcp_server);
     cyw43_arch_deinit();
     // for(int i = 0; i < 20; i++){
