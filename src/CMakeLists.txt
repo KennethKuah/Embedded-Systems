@@ -2,12 +2,18 @@
 add_executable(pico-1
         pico-1.c
         net_config/net_config.c
+        net_config/dhcpserver/dhcpserver.c
+        net_config/dnsserver/dnsserver.c
+        net_config/tcpserver/tcpserver.c
 )
 
 # pico 1 include directories for referencing driver/helper header files
 target_include_directories(pico-1 PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/net_config
+        ${CMAKE_CURRENT_LIST_DIR}/net_config/dhcpserver
+        ${CMAKE_CURRENT_LIST_DIR}/net_config/dnsserver
+        ${CMAKE_CURRENT_LIST_DIR}/net_config/tcpserver
 )
 
 # pico 2 target compile definitions

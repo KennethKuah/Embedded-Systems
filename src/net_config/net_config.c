@@ -1,14 +1,16 @@
 #include "net_config.h"
+#include "dhcpserver.h"
+#include "dnsserver.h"
+#include "tcpserver.h"
 
-// Default allow all authentication types.
-// `CYW43_AUTH_OPEN`, `CYW43_AUTH_WPA_TKIP_PSK`, `CYW43_AUTH_WPA2_AES_PSK`, `CYW43_AUTH_WPA2_MIXED_PSK`
-// Two or mode modes can be set by passing in with the '|' operand.
-// E.g. `set_auth_scan_mode(CYW43_AUTH_OPEN | CYW43_AUTH_WPA_TKIP_PSK)`
+// Default value to allow all authentication types.
 int auth_scan_mode = (CYW43_AUTH_OPEN | CYW43_AUTH_WPA_TKIP_PSK |
         CYW43_AUTH_WPA2_AES_PSK | CYW43_AUTH_WPA2_MIXED_PSK);
+cyw43_ev_scan_result_t scanned_results[MAX_SCAN_RESULTS];
 volatile int num_scanned = 0;
 volatile uint64_t start_time = 0;
 volatile bool timeout = false;
+char* _ap_name;
 
 // Initialize the cyw43 architecture and enable station mode
 int init_wifi() {
@@ -21,7 +23,10 @@ int init_wifi() {
     return 0;
 }
 
-// Sets wifi scan filter for the specified authentication mode(s)
+// Sets wifi scan filter for the specified authentication mode(s).
+// Two or mode modes can be set by passing in with the '|' operand.
+// E.g. `set_auth_scan_mode(CYW43_AUTH_OPEN | CYW43_AUTH_WPA_TKIP_PSK)`
+// \param mask the authorization type to use. Values are `CYW43_AUTH_OPEN`, `CYW43_AUTH_WPA_TKIP_PSK`, `CYW43_AUTH_WPA2_AES_PSK`, `CYW43_AUTH_WPA2_MIXED_PSK`
 void set_auth_scan_mode(int mask){
     auth_scan_mode = mask;
 }
@@ -67,8 +72,8 @@ static int add_scan_result(void *env, const cyw43_ev_scan_result_t *result) {
 }
 
 // Performs the WiFi AP scan until the `scanned_results` is filled or until the `SCAN_TIMEOUT` has been reached. 
-// Returns the length of `scanned_results`.
-int wifi_scan() {
+// Returns the pointer to `scanned_results`.
+cyw43_ev_scan_result_t* wifi_scan() {
     absolute_time_t scan_time = nil_time;
     bool scan_in_progress = false;
     struct repeating_timer timer;
@@ -109,11 +114,12 @@ int wifi_scan() {
             break;
         }
     }
-    return num_scanned;
+    return scanned_results;
 }
 
 // Waits for console/serial input for a valid `scanned_results` index. 
 // Returns the SSID name of the selected index.
+// \param ssid_aray the array of wifi scanned results
 char* select_ssid(cyw43_ev_scan_result_t * ssid_array) {
     char input_buffer[5] = {0};
     int buf_ptr = 0;
@@ -145,4 +151,49 @@ char* select_ssid(cyw43_ev_scan_result_t * ssid_array) {
     }
     
     return ssid_array[ssid_select].ssid;
+}
+
+//  Enables Wi-Fi AP (Access point) mode.
+// This enables the Wi-Fi in Access Point mode such that connections can be made to the device by other Wi-Fi clients
+// \param ap_name the name for the access point
+// \param password the password to use or NULL for no password.
+void configure_ap(char* ap_name, char* password) {
+    _ap_name = ap_name;
+    cyw43_arch_enable_ap_mode(_ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
+}
+
+// Initializes the DHCP, DNS services and binds the `TCP_PORT` for TCP connections.
+// Continuously polls for client connections.
+int run_server() {
+    TCP_SERVER_T *state = tcp_server_init();
+    if (!state) {
+        DEBUG_printf("failed to allocate state\n");
+        return 1;
+    }
+
+    ip4_addr_t mask;
+    IP4_ADDR(ip_2_ip4(&state->gw), 192, 168, 4, 1);
+    IP4_ADDR(ip_2_ip4(&mask), 255, 255, 255, 0);
+
+    // Start the dhcp server
+    dhcp_server_t dhcp_server;
+    dhcp_server_init(&dhcp_server, &state->gw, &mask);
+
+    // Start the dns server
+    dns_server_t dns_server;
+    dns_server_init(&dns_server, &state->gw);
+
+    if (!tcp_server_open(state, _ap_name)) {
+        DEBUG_printf("failed to open server\n");
+        return 1;
+    }
+    while(!state->complete) {
+        cyw43_arch_poll();
+        cyw43_arch_wait_for_work_until(make_timeout_time_ms(1000));
+    }
+    tcp_server_close(state);
+    dns_server_deinit(&dns_server);
+    dhcp_server_deinit(&dhcp_server);
+    cyw43_arch_deinit();
+    return 0;
 }
