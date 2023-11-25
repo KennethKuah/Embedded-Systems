@@ -1,6 +1,13 @@
 set(PICO_LWIP_PATH ${PICO_SDK_PATH}/lib/lwip)
+set (LWIP_INCLUDE_DIRS
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${PICO_LWIP_PATH}/contrib
+    ${PICO_LWIP_PATH}/contrib/ports/freertos/include
+    ${CMAKE_CURRENT_LIST_DIR}/../net_config/
+        )
 
 pico_add_library(pico_lwip_custom NOFLAG)
+target_include_directories(pico_lwip_custom_headers INTERFACE ${LWIP_INCLUDE_DIRS})
 target_sources(pico_lwip_custom INTERFACE
         # original source of pico_lwip_api interface
         ${PICO_LWIP_PATH}/src/api/api_lib.c
