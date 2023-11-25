@@ -10,10 +10,16 @@ static struct {
     bool mem_address_written;
 } context;
 
-char received_data[MAX_BUF_LEN];
-i2c_inst_t *i2c_master_channel;
-i2c_inst_t *i2c_slave_channel;
-bool finishedReceiving = false;
+volatile int data_index = 0;
+char received_data[I2C_MAX_BUF_LEN];
+volatile bool written = false;
+volatile bool finishedReceiving = false;
+// This needs to be a global variable is because I want to return it using another function
+char* packet_data = NULL;
+i2c_inst_t* i2c_master_channel;
+i2c_inst_t* i2c_slave_channel;
+uint8_t master_address;
+uint8_t slave_address;
 
 // Serialises data that is transmitted via I2C.
 // Buffer is dynamically allocated, meaning it must be freed after its used
@@ -86,24 +92,16 @@ I2CData *i2c_deserialize(char *buf) {
 
 // Our handler is called from the I2C ISR, so it must complete quickly. Blocking calls /
 // printing to stdio may interfere with interrupt handling.
-static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
-    static int data_index = 0;
+static void i2c_slave_handler(i2c_inst_t* i2c, i2c_slave_event_t event) {
     switch (event) {
     case I2C_SLAVE_RECEIVE: // master has written some data
         if (!context.mem_address_written) {
             // writes always start with the memory address
-            context.mem_address = i2c_read_byte_raw(i2c);
             context.mem_address_written = true;
             data_index = 0;
-        } else {
-            // Subsequent bytes are data
-            uint8_t data = i2c_read_byte_raw(i2c);
-            context.mem[context.mem_address] = data;
-
-             // For plaintext processing, assuming ASCII characters are sent
-            received_data[data_index++] = data;
-            context.mem_address = (context.mem_address + 1) % sizeof(context.mem);
         }
+        uint8_t data = i2c_read_byte_raw(i2c);
+        received_data[data_index++] = data;
         break;
     case I2C_SLAVE_REQUEST: // master is requesting data
         // load from memory
@@ -111,12 +109,26 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
         context.mem_address++;
         break;
     case I2C_SLAVE_FINISH: // master has signalled Stop / Restart
+        // Assuming the transmission ends with a '\0' to indicate the end of a string
         context.mem_address_written = false;
-        received_data[data_index] = '\0';
-        finishedReceiving = true;
+        written = true;
         break;
     default:
         break;
+    }
+}
+
+static void send_data(i2c_inst_t* i2c, const uint8_t slave_addr, const uint8_t* data, size_t data_size) {
+    for (size_t i = 0; i < data_size; i += MAX_BUF_LEN) {
+        size_t chunk_size = data_size - i < MAX_BUF_LEN ? data_size - i : MAX_BUF_LEN;
+        // Write in blocks of MAX_BUF_LEN bytes
+        int bytes_written = i2c_write_blocking(i2c, slave_addr, data + i, chunk_size, false);
+        if (bytes_written < 0) {
+            // Handle error
+            printf("Error writing to slave.\n");
+            break;
+        }
+        sleep_ms(8000);
     }
 }
 
@@ -135,7 +147,7 @@ void setup_master(i2c_inst_t *i2c_channel) {
     i2c_set_slave_mode(i2c_channel, false, 0); 
 }
 
-void setup_slave(i2c_inst_t *i2c_channel) {
+void setup_slave(i2c_inst_t *i2c_channel, uint8_t *slave_address) {
     i2c_slave_channel = i2c_channel;
     gpio_init(I2C_SLAVE_SDA_PIN);
     gpio_set_function(I2C_SLAVE_SDA_PIN, GPIO_FUNC_I2C);
@@ -146,36 +158,65 @@ void setup_slave(i2c_inst_t *i2c_channel) {
     gpio_pull_up(I2C_SLAVE_SCL_PIN);
 
     i2c_init(i2c_channel, I2C_BAUDRATE);
-    i2c_slave_init(i2c_channel, I2C_CLIENT_ADDRESS, &i2c_slave_handler);
+    i2c_slave_init(i2c_channel, *slave_address, &i2c_slave_handler);
 }
 
 int send_i2c(char* msg) {
-    int total_bytes_written = 0;
-    uint8_t pending_msg_len = strlen(msg);
-    uint8_t mem_address = 0;
+    int count = 0;
+    int msg_len = strlen(msg);
 
-    while (pending_msg_len > 0) {
-        uint8_t buf[MAX_BUF_LEN];
-        buf[0] = mem_address;
+    uint8_t buf_len[20];
+    sprintf(buf_len, "%d", msg_len);
+    int len = strlen(buf_len);
+    printf("Sending the length\n");
+    count = i2c_write_blocking(i2c_master_channel, master_address, buf_len, len, false);
+    sleep_ms(5000);
 
-        int bytes_written = 0;
-        if (pending_msg_len > (MAX_BUF_LEN - 1)){
-            memcpy(buf + 1, msg, MAX_BUF_LEN - 1);
-            msg += MAX_BUF_LEN - 1;
-            bytes_written = i2c_write_blocking(i2c_master_channel, I2C_SLAVE_ADDRESS, buf, MAX_BUF_LEN, false);
-        } else { 
-            memcpy(buf + 1, msg, pending_msg_len);
-            msg += pending_msg_len;
-            bytes_written = i2c_write_blocking(i2c_master_channel, I2C_SLAVE_ADDRESS, buf, pending_msg_len + 1, false);
+    uint8_t buf[msg_len];
+    memcpy(buf, msg, msg_len);
+    printf("Starting to send data...\n");
+    send_data(i2c_master_channel, master_address, buf, msg_len);
+    puts("");
+    sleep_ms(5000);
+    return 0;
+}
+
+void wait_for_data() {
+    bool created_dynamic_location = false;
+    int size_of_data = 0;
+    int ptr_in_packet_data = 0;
+    while (1) {
+        if (written) {
+            // This will run when the master sends the slave the bytes for the size of the data that will be send over
+            // Checking if dynamic location is being created already
+            if (!created_dynamic_location) {
+                received_data[data_index] = '\0';
+                size_of_data = atoi(received_data);
+                // +1 because we need an extra 1 space for the null terminating byte
+                packet_data = (char*)malloc(sizeof(char) * (size_of_data + 1));
+                created_dynamic_location = true;
+                ptr_in_packet_data = 0;
+            }
+            else {
+                // This should only run when the master sends the slave the data
+                // The reason why data_index is used here is because data_index contains the number of bytes that the master has sent to the slave
+                // So, using the same number of bytes, to write into the new dynamic buffer created by malloc
+                memcpy(packet_data + ptr_in_packet_data, received_data, data_index);
+                // Increment the pointer of ptr_in_packet_data so that we can memcpy the remaining bytes into the buffer
+                ptr_in_packet_data += data_index;
+                if (ptr_in_packet_data >= size_of_data) {
+                    packet_data[ptr_in_packet_data] = '\0';
+                    printf("This is packet_data: %s\n", packet_data);
+                    created_dynamic_location = false;
+                    finishedReceiving = true;
+                    // Sending back the response to master
+                }
+
+            }
+            written = true;
         }
-        if (bytes_written < 0) {
-            puts("Couldn't write to slave, please check your wiring!");
-        }
-        mem_address = (mem_address + 32) % 256;
-        pending_msg_len = strlen(msg);
-        total_bytes_written += bytes_written;
+        sleep_ms(500);
     }
-    return total_bytes_written;
 }
 
 char* recv_i2c() {
@@ -183,15 +224,19 @@ char* recv_i2c() {
         tight_loop_contents();
     
     finishedReceiving = false;
-    return received_data;
+    return packet_data;
 }
 
 void init_i2c_pico_1() {
+    master_address = I2C_PICO_1_ADDRESS;
+    slave_address = I2C_PICO_2_ADDRESS;
     setup_master(i2c1);
-    setup_slave(i2c0);
+    setup_slave(i2c0, &slave_address);
 }
 
 void init_i2c_pico_2() {
+    master_address = I2C_PICO_2_ADDRESS;
+    slave_address = I2C_PICO_1_ADDRESS;
     setup_master(i2c0);
-    setup_slave(i2c1);
+    setup_slave(i2c1, &slave_address);
 }
