@@ -56,7 +56,7 @@
 #include "lwip/autoip.h"
 #include "lwip/stats.h"
 #include "lwip/prot/iana.h"
-#include "i2c_helper/i2c.h"
+#include "i2c_bridge/i2c_bridge.h"
 
 #include <string.h>
 
@@ -657,12 +657,11 @@ ip4_input(struct pbuf *p, struct netif *inp)
     /* non-broadcast packet? */
     if (!ip4_addr_isbroadcast(ip4_current_dest_addr(), inp)) {
       /* try to forward IP packet on (other) interfaces */
-    //   ip4_forward(p, (struct ip_hdr *)p->payload, inp);
-		
-        u8_t *tcp_udp_data = ((u8_t *)p->payload) + IP_HLEN;
-        struct tcp_hdr *th = (struct tcp_hdr*)tcp_udp_data;
-        char* serialized_data = i2c_serialize((char *)ip_current_dest_addr(), th->src, "protocol", p->payload, p->len);
-        send_slave(serialized_data);
+    	// ip4_forward(p, (struct ip_hdr *)p->payload, inp);
+			u8_t *tcp_udp_data = ((u8_t *)p->payload) + IP_HLEN;
+			struct tcp_hdr *th = (struct tcp_hdr*)tcp_udp_data;
+			char* serialized_data = i2c_serialize((char *)ip_current_dest_addr(), th->src, IPH_PROTO(iphdr), p->payload, p->len);
+			send_i2c(serialized_data);
     } else
 #endif /* IP_FORWARD */
     {

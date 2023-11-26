@@ -28,12 +28,12 @@ typedef unsigned char BYTE;
 typedef struct {
     char *dst_ip;
     int port;
-    char *proto;
+    BYTE *proto;
     BYTE *data;
     int data_len;
 } I2CData;
 
-char *i2c_serialize(char *dst_ip, int port, char *proto, BYTE *data,
+char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
                     int data_len);
 I2CData *i2c_deserialize(char *buf);
 void init_i2c_pico_1();
