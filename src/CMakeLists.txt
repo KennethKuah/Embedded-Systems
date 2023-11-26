@@ -1,5 +1,7 @@
 # add external repo subdirectory to build sd card interface
 add_subdirectory(${PROJECT_SOURCE_DIR}/include/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src build)
+# add subdirectory for custom lwip library
+add_subdirectory(lwip_custom)
 
 # pico 1 source files
 add_executable(pico-1
@@ -36,7 +38,8 @@ target_link_libraries(pico-1
         pico_stdlib
         hardware_gpio
         hardware_i2c
-        pico_cyw43_arch_lwip_sys_freertos
+        pico_cyw43_arch_sys_freertos
+        pico_lwip_custom # modified lwip library
         pico_lwip_iperf
         pico_i2c_slave
         FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
