@@ -4,8 +4,8 @@
 #include "tcpserver.h"
 
 // Default value to allow all authentication types.
-int auth_scan_mode = (CYW43_AUTH_OPEN | CYW43_AUTH_WPA_TKIP_PSK |
-        CYW43_AUTH_WPA2_AES_PSK | CYW43_AUTH_WPA2_MIXED_PSK);
+int auth_scan_mode = (AUTH_OPEN | AUTH_WEP | AUTH_WPA_PSK | AUTH_WPA2_PSK | 
+                        AUTH_WPA_WPA2_PSK | AUTH_WPA2_ENTERPRISE);
 cyw43_ev_scan_result_t scanned_results[MAX_SCAN_RESULTS];
 volatile int num_scanned = 0;
 volatile uint64_t start_time = 0;
@@ -25,8 +25,8 @@ int init_wifi() {
 
 // Sets wifi scan filter for the specified authentication mode(s).
 // Two or mode modes can be set by passing in with the '|' operand.
-// E.g. `set_auth_scan_mode(CYW43_AUTH_OPEN | CYW43_AUTH_WPA_TKIP_PSK)`
-// \param mask the authorization type to use. Values are `CYW43_AUTH_OPEN`, `CYW43_AUTH_WPA_TKIP_PSK`, `CYW43_AUTH_WPA2_AES_PSK`, `CYW43_AUTH_WPA2_MIXED_PSK`
+// E.g. `set_auth_scan_mode(AUTH_OPEN | AUTH_WPA_WPA2_PSK)`
+// \param mask the authorization type to use
 void set_auth_scan_mode(int mask){
     auth_scan_mode = mask;
 }
@@ -52,8 +52,8 @@ bool timeout_callback(struct repeating_timer *timer) {
 static int add_scan_result(void *env, const cyw43_ev_scan_result_t *result) {
     if (result) {
 
-        // Filters for the AP authentication mode(s)
-        if(result->auth_mode & auth_scan_mode) {
+        // Filters for the AUTH_OPEN or other AP authentication mode(s)
+        if(result->auth_mode == 0 || result->auth_mode & auth_scan_mode) {
 
             // This is to prevent duplicate AP scan results
             for (int i = 0; i < num_scanned; i++) {
@@ -73,7 +73,7 @@ static int add_scan_result(void *env, const cyw43_ev_scan_result_t *result) {
 
 // Performs the WiFi AP scan until the `scanned_results` is filled or until the `SCAN_TIMEOUT` has been reached. 
 // Returns the pointer to `scanned_results`.
-cyw43_ev_scan_result_t* wifi_scan() {
+void perform_wifi_scan() {
     absolute_time_t scan_time = nil_time;
     bool scan_in_progress = false;
     struct repeating_timer timer;
@@ -114,17 +114,38 @@ cyw43_ev_scan_result_t* wifi_scan() {
             break;
         }
     }
-    return scanned_results;
+}
+
+// Prints the wifi scan results to serial
+void print_wifi_scan_results() {
+    printf(" ===== WiFi Access Points visible nearby ===== \n");
+    for(int i = 0; i < num_scanned; i++) {
+        printf("%i. SSID: ", (i + 1));
+        if (strlen(scanned_results[i].ssid) == 0)
+            printf("Hidden Network\t");
+        else
+            printf("%s\t", scanned_results[i].ssid);
+        printf("AUTH MODE: %s\n",
+            scanned_results[i].auth_mode == AUTH_OPEN ? "No authorisation required (open)" :
+            scanned_results[i].auth_mode == AUTH_WEP ? "WEP authorisation" :
+            scanned_results[i].auth_mode == AUTH_WPA_PSK ? "WPA authorisation" :
+            scanned_results[i].auth_mode == AUTH_WPA2_PSK ? "WPA2 authorisation (preferred)" :
+            scanned_results[i].auth_mode == AUTH_WPA_WPA2_PSK ? "WPA2/WPA mixed authorisation" :
+            scanned_results[i].auth_mode == AUTH_WPA2_ENTERPRISE ? "WPA2-ENTERPRISE authorisation" :
+            "Unknown");
+    }
+    printf(" =========== End of Scan Results ============= \n");
 }
 
 // Waits for console/serial input for a valid `scanned_results` index. 
 // Returns the SSID name of the selected index.
 // \param ssid_aray the array of wifi scanned results
-char* select_ssid(cyw43_ev_scan_result_t * ssid_array) {
+char* select_ssid() {
     char input_buffer[5] = {0};
     int buf_ptr = 0;
     int ssid_select = -1;
 
+    print_wifi_scan_results();
     printf("Enter the SSID index you want to copy-> ");
 
     while (true) {
@@ -150,7 +171,7 @@ char* select_ssid(cyw43_ev_scan_result_t * ssid_array) {
         buf_ptr++;
     }
     
-    return ssid_array[ssid_select].ssid;
+    return scanned_results[ssid_select].ssid;
 }
 
 //  Enables Wi-Fi AP (Access point) mode.
