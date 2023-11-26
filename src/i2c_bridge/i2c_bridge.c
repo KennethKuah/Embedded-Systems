@@ -16,6 +16,10 @@ volatile bool written = false;
 volatile bool finishedReceiving = false;
 // This needs to be a global variable is because I want to return it using another function
 char* packet_data = NULL;
+uint8_t I2C_MASTER_SDA_PIN; 
+uint8_t I2C_MASTER_SCL_PIN;
+uint8_t I2C_SLAVE_SDA_PIN;
+uint8_t I2C_SLAVE_SCL_PIN;
 i2c_inst_t* i2c_master_channel;
 i2c_inst_t* i2c_slave_channel;
 uint8_t master_address;
@@ -187,7 +191,7 @@ void wait_for_data() {
     int ptr_in_packet_data = 0;
     while (1) {
         if (written) {
-            // This will run when the master sends the slave the bytes for the size of the data that will be send over
+                        // This will run when the master sends the slave the bytes for the size of the data that will be send over
             // Checking if dynamic location is being created already
             if (!created_dynamic_location) {
                 received_data[data_index] = '\0';
@@ -204,7 +208,7 @@ void wait_for_data() {
                 memcpy(packet_data + ptr_in_packet_data, received_data, data_index);
                 // Increment the pointer of ptr_in_packet_data so that we can memcpy the remaining bytes into the buffer
                 ptr_in_packet_data += data_index;
-                if (ptr_in_packet_data >= size_of_data) {
+                                if (ptr_in_packet_data >= size_of_data) {
                     packet_data[ptr_in_packet_data] = '\0';
                     printf("This is packet_data: %s\n", packet_data);
                     created_dynamic_location = false;
@@ -228,6 +232,10 @@ char* recv_i2c() {
 }
 
 void init_i2c_pico_1() {
+    I2C_MASTER_SDA_PIN = 4; 
+    I2C_MASTER_SCL_PIN = 5;
+    I2C_SLAVE_SDA_PIN = 6;
+    I2C_SLAVE_SCL_PIN = 7;
     master_address = I2C_PICO_1_ADDRESS;
     slave_address = I2C_PICO_2_ADDRESS;
     setup_master(i2c1);
@@ -235,6 +243,10 @@ void init_i2c_pico_1() {
 }
 
 void init_i2c_pico_2() {
+    I2C_MASTER_SDA_PIN = 6;
+    I2C_MASTER_SCL_PIN = 7;
+    I2C_SLAVE_SDA_PIN = 4;
+    I2C_SLAVE_SCL_PIN = 5;
     master_address = I2C_PICO_2_ADDRESS;
     slave_address = I2C_PICO_1_ADDRESS;
     setup_master(i2c0);
