@@ -61,6 +61,7 @@ pico_mirrored_target_link_libraries(pico_lwip_custom INTERFACE
         pico_lwip_core
         pico_lwip_core4_custom
         pico_lwip_core6_custom
+        pico_lwip_core6
         pico_lwip_netif
         pico_lwip_sixlowpan
         pico_lwip_ppp
