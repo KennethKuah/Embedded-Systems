@@ -24,11 +24,15 @@ int deinit_sd(){
 // \param path absolute filepath to file
 // \param mode File access mode
 // \return File handle if open is successful, NULL otherwise
-FIL* sd_fopen(const char *const path, BYTE mode){
+FIL* sd_fopen(const char *const path, BYTE mode) {
     FIL* fil = (FIL*)malloc(sizeof(FIL));
     
     FRESULT fr = f_open(fil, path, mode);
+#if PCAP_OVERWRITE
     if (FR_OK != fr && FR_EXIST != fr) {
+#else
+    if (FR_OK != fr) {
+#endif
         printf("f_open(%s) error: %s (%d)\n", path, FRESULT_str(fr), fr);
         return NULL;
     }
@@ -37,7 +41,7 @@ FIL* sd_fopen(const char *const path, BYTE mode){
 
 // Closes the file handle
 // \return 0 if file close is successful, an error code otherwise
-int sd_fclose(FIL* fil){
+int sd_fclose(FIL* fil) {
     FRESULT fr = f_close(fil);
     if (fil)
         free(fil);

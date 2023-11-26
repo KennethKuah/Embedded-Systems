@@ -13,7 +13,11 @@ int set_pcap_file(const char *const path) {
 
     // Opens the file on the sd card
     fp = (char *)path;
+#if PCAP_OVERWRITE
+    FIL* file = sd_fopen(fp, FA_OPEN_ALWAYS | FA_WRITE);
+#else
     FIL* file = sd_fopen(fp, FA_CREATE_NEW | FA_WRITE);
+#endif
     if (!file){
         printf("Failed to create pcap file. Check if it exists on SD card.\n");
         return PICO_ERROR_NOT_PERMITTED;
@@ -39,9 +43,10 @@ int set_pcap_file(const char *const path) {
 }
 
 // Writes packet data to pcap file
-// \param data packet bytes to write
-// \param len packet bytes length
-void write_packet(uint8_t *data, int len) {
+// \param p the received packet, p->payload pointing to the Ethernet header or
+// to an IP header (if inp doesn't have NETIF_FLAG_ETHARP or
+// NETIF_FLAG_ETHERNET flags)
+void write_packet(struct pbuf *p) {
     // Open the file in append mode
     FIL* file = sd_fopen(fp, FA_OPEN_APPEND | FA_WRITE);
 
@@ -54,15 +59,19 @@ void write_packet(uint8_t *data, int len) {
     struct pcap_sf_pkthdr pkthdr;
     pkthdr.ts.tv_sec = (int32_t) seconds;
     pkthdr.ts.tv_usec = (int32_t) microseconds;
-    pkthdr.caplen = len;
-    pkthdr.len = len;
+    pkthdr.caplen = p->tot_len;
+    pkthdr.len = p->tot_len;
 
     // Write the PCAP packet header fields to file followed by data packet bytes
     TCHAR header[BUFFER_SIZE_HDR];
     memcpy(header, &pkthdr, BUFFER_SIZE_HDR);
     f_write(file, (const TCHAR*)header, BUFFER_SIZE_HDR, NULL);
-    f_write(file, data, len, NULL);
 
+    // Iterate over the pbuf chain until we have read the entire
+    // packet into the pcap file.
+    for (struct pbuf *q = p; q != NULL; q = q->next) {
+        f_write(file, q->payload, q->len, NULL);
+    }    
     // Close the file handle to save output of file, if abruptly disconnected. 
     sd_fclose(file);
 }

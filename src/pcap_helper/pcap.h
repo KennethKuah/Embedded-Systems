@@ -1,6 +1,7 @@
 #ifndef PCAP_H
 #define PCAP_H
 #include "sd_card.h"
+#include "lwip/pbuf.h"
 
 #define PCAP_VERSION_MAJOR 2
 #define PCAP_VERSION_MINOR 4
@@ -35,7 +36,7 @@ struct pcap_sf_pkthdr {
 #define BUFFER_SIZE_PKT ((256 * 256) - 1)
 
 int set_pcap_file(const char *const path);
-void write_packet(uint8_t *data, int len);
+void write_packet(struct pbuf *p);
 
 
 #endif

@@ -49,6 +49,7 @@
 #include "lwip/pbuf.h"
 #include "lwip/etharp.h"
 #include "netif/ethernet.h"
+#include "pcap_helper/pcap.h"
 
 #define TCPIP_MSG_VAR_REF(name)     API_VAR_REF(name)
 #define TCPIP_MSG_VAR_DECLARE(name) API_VAR_DECLARE(struct tcpip_msg, name)
@@ -287,6 +288,10 @@ tcpip_inpkt(struct pbuf *p, struct netif *inp, netif_input_fn input_fn)
 err_t
 tcpip_input(struct pbuf *p, struct netif *inp)
 {
+#if SD_MOUNTED
+	write_packet(p);
+#endif
+
 #if LWIP_ETHERNET
   if (inp->flags & (NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET)) {
     return tcpip_inpkt(p, inp, ethernet_input);

@@ -31,6 +31,8 @@ target_include_directories(pico-1 PRIVATE
 
 # pico 2 target compile definitions
 target_compile_definitions(pico-1 PRIVATE
+        SD_MOUNTED=0
+        PCAP_OVERWRITE=0
 )
 
 # pico 1 common dependencies
