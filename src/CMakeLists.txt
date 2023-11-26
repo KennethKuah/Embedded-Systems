@@ -29,8 +29,9 @@ target_include_directories(pico-1 PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/pcap_helper
 )
 
-# pico 2 target compile definitions
+# pico 1 target compile definitions
 target_compile_definitions(pico-1 PRIVATE
+        IP_FORWARD=1
         SD_MOUNTED=0
         PCAP_OVERWRITE=0
 )

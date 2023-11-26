@@ -1,10 +1,11 @@
+set(RP2_COMMON_PATH ${PICO_SDK_PATH}/src/rp2_common)
 set(PICO_LWIP_PATH ${PICO_SDK_PATH}/lib/lwip)
 set (LWIP_INCLUDE_DIRS
-    ${CMAKE_CURRENT_LIST_DIR}/include
-    ${PICO_LWIP_PATH}/contrib
-    ${PICO_LWIP_PATH}/contrib/ports/freertos/include
-    ${CMAKE_CURRENT_LIST_DIR}/../net_config/
-        )
+        ${CMAKE_CURRENT_LIST_DIR}/include
+        ${PICO_LWIP_PATH}/contrib
+        ${PICO_LWIP_PATH}/contrib/ports/freertos/include
+        ${CMAKE_CURRENT_LIST_DIR}/../net_config/
+)
 
 pico_add_library(pico_lwip_core4_custom NOFLAG)
 target_sources(pico_lwip_core4_custom INTERFACE
@@ -19,6 +20,22 @@ target_sources(pico_lwip_core4_custom INTERFACE
 
         # modified sources of pico_lwip_core4 interface
         ${CMAKE_CURRENT_LIST_DIR}/ip4.c
+        )
+
+pico_add_library(pico_lwip_core6_custom NOFLAG)
+target_sources(pico_lwip_core6_custom INTERFACE
+        ${PICO_LWIP_PATH}/src/core/ipv6/dhcp6.c
+        ${PICO_LWIP_PATH}/src/core/ipv6/ethip6.c
+        ${PICO_LWIP_PATH}/src/core/ipv6/icmp6.c
+        ${PICO_LWIP_PATH}/src/core/ipv6/inet6.c
+        # ${PICO_LWIP_PATH}/src/core/ipv6/ip6.c
+        ${PICO_LWIP_PATH}/src/core/ipv6/ip6_addr.c
+        ${PICO_LWIP_PATH}/src/core/ipv6/ip6_frag.c
+        ${PICO_LWIP_PATH}/src/core/ipv6/mld6.c
+        ${PICO_LWIP_PATH}/src/core/ipv6/nd6.c
+
+        # modified sources of pico_lwip_core6 interface
+        ${CMAKE_CURRENT_LIST_DIR}/ip6.c
         )
 
 pico_add_library(pico_lwip_custom NOFLAG)
@@ -37,6 +54,7 @@ target_sources(pico_lwip_custom INTERFACE
 
         # modified sources of pico_lwip_api interface
         ${CMAKE_CURRENT_LIST_DIR}/tcpip.c
+        ${RP2_COMMON_PATH}/pico_lwip/lwip_freertos.c
         )
 
 pico_mirrored_target_link_libraries(pico_lwip_custom INTERFACE
@@ -44,7 +62,7 @@ pico_mirrored_target_link_libraries(pico_lwip_custom INTERFACE
         # pico_lwip interface (w/out pico_lwip_api for customization of source files)
         pico_lwip_core
         pico_lwip_core4_custom
-        pico_lwip_core6
+        pico_lwip_core6_custom
         pico_lwip_netif
         pico_lwip_sixlowpan
         pico_lwip_ppp
