@@ -23,8 +23,9 @@ target_include_directories(pico-1 PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/net_config/tcpserver
 )
 
-# pico 2 target compile definitions
+# pico 1 target compile definitions
 target_compile_definitions(pico-1 PRIVATE
+        IP_FORWARD=1
 )
 
 # pico 1 common dependencies
