@@ -1,3 +1,5 @@
+add_subdirectory(deauth)
+
 add_executable(src
         main.c
         )
@@ -13,6 +15,7 @@ target_link_libraries(
         pico_stdlib
         hardware_gpio
         pico_cyw43_arch_lwip_threadsafe_background
+        deauth
         )
 
 # enable usb output
