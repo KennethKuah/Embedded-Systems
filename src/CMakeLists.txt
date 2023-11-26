@@ -20,6 +20,7 @@ target_link_libraries(
 
 # enable usb output
 pico_enable_stdio_usb(src 1)
+pico_enable_stdio_uart(src 0)
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(src)
