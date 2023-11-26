@@ -6,6 +6,21 @@ set (LWIP_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/../net_config/
         )
 
+pico_add_library(pico_lwip_core4_custom NOFLAG)
+target_sources(pico_lwip_core4_custom INTERFACE
+        ${PICO_LWIP_PATH}/src/core/ipv4/autoip.c
+        ${PICO_LWIP_PATH}/src/core/ipv4/dhcp.c
+        ${PICO_LWIP_PATH}/src/core/ipv4/etharp.c
+        ${PICO_LWIP_PATH}/src/core/ipv4/icmp.c
+        ${PICO_LWIP_PATH}/src/core/ipv4/igmp.c
+        ${PICO_LWIP_PATH}/src/core/ipv4/ip4_frag.c
+        # ${PICO_LWIP_PATH}/src/core/ipv4/ip4.c
+        ${PICO_LWIP_PATH}/src/core/ipv4/ip4_addr.c
+
+        # modified sources of pico_lwip_core4 interface
+        ${CMAKE_CURRENT_LIST_DIR}/ip4.c
+        )
+
 pico_add_library(pico_lwip_custom NOFLAG)
 target_include_directories(pico_lwip_custom_headers INTERFACE ${LWIP_INCLUDE_DIRS})
 target_sources(pico_lwip_custom INTERFACE
@@ -28,7 +43,7 @@ pico_mirrored_target_link_libraries(pico_lwip_custom INTERFACE
         pico_async_context_base
         # pico_lwip interface (w/out pico_lwip_api for customization of source files)
         pico_lwip_core
-        pico_lwip_core4
+        pico_lwip_core4_custom
         pico_lwip_core6
         pico_lwip_netif
         pico_lwip_sixlowpan
