@@ -1,25 +1,58 @@
-#include "master.h"
+/*
+ * Copyright (c) 2021 Valentin Milea <valentin.milea@gmail.com>
+ * Copyright (c) 2023 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+#include <hardware/i2c.h>
+#include <pico/i2c_slave.h>
+#include <pico/stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#define MAX_BUF_LEN 256
+
+static const uint I2C_SLAVE_ADDRESS = 0x04;
+static const uint I2C_CLIENT_ADDRESS = 0x17;
+static const uint I2C_BAUDRATE = 100000; // 100 kHz
+
+// For this example, we run both the master and slave from the same board.
+// You'll need to wire pin GP4 to GP6 (SDA), and pin GP5 to GP7 (SCL).
+static const uint I2C_SLAVE_SDA_PIN = PICO_DEFAULT_I2C_SDA_PIN; // 4
+static const uint I2C_SLAVE_SCL_PIN = PICO_DEFAULT_I2C_SCL_PIN; // 5
+static const uint I2C_MASTER_SDA_PIN = 6;
+static const uint I2C_MASTER_SCL_PIN = 7;
+volatile int data_index = 0;
+volatile int written = 0;
+char received_data[512];
+volatile bool received = false;
+// This needs to be a global variable is because I want to return it using another function
+char * packet_data = NULL;
+
+
+// The slave implements a 256 byte memory. To write a series of bytes, the master first
+// writes the memory address, followed by the data. The address is automatically incremented
+// for each byte transferred, looping back to 0 upon reaching the end. Reading is done
+// sequentially from the current memory address.
+static struct
+{
+    uint8_t mem[MAX_BUF_LEN];
+    uint8_t mem_address;
+    bool mem_address_written;
+} context;
 
 // Our handler is called from the I2C ISR, so it must complete quickly. Blocking calls /
 // printing to stdio may interfere with interrupt handling.
 static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
-    static int data_index = 0;
     switch (event) {
     case I2C_SLAVE_RECEIVE: // master has written some data
-        if (!context.mem_address_written) {
-            // writes always start with the memory address
-            context.mem_address = i2c_read_byte_raw(i2c);
+        if(!context.mem_address_written){
             context.mem_address_written = true;
             data_index = 0;
-        } else {
-            // Subsequent bytes are data
-            uint8_t data = i2c_read_byte_raw(i2c);
-            context.mem[context.mem_address] = data;
-
-             // For plaintext processing, assuming ASCII characters are sent
-            received_data[data_index++] = data;
-            context.mem_address = (context.mem_address + 1) % sizeof(context.mem);
         }
+        uint8_t data = i2c_read_byte_raw(i2c);
+        received_data[data_index++] = data;
         break;
     case I2C_SLAVE_REQUEST: // master is requesting data
         // load from memory
@@ -28,12 +61,24 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
         break;
     case I2C_SLAVE_FINISH: // master has signalled Stop / Restart
         context.mem_address_written = false;
-        received_data[data_index] = '\0';
-        received = true;
-        printf("Received from i2c0: %s\n", received_data);
+        written = 1;
         break;
     default:
         break;
+    }
+}
+
+static void send_data(i2c_inst_t *i2c, const uint8_t slave_addr, const uint8_t *data, size_t data_size) {
+    for (size_t i = 0; i < data_size; i += MAX_BUF_LEN) {
+        size_t chunk_size = data_size - i < MAX_BUF_LEN ? data_size - i : MAX_BUF_LEN;
+        // Write in blocks of MAX_BUF_LEN bytes
+        int bytes_written = i2c_write_blocking(i2c, slave_addr, data + i, chunk_size, false);
+        if (bytes_written < 0) {
+            // Handle error
+            printf("Error writing to slave.\n");
+            break;
+        }
+        sleep_ms(5000);
     }
 }
 
@@ -66,42 +111,91 @@ static void setup_master(){
     i2c_set_slave_mode(i2c1, false, 0); 
 }
 
-static void send_slave(char * msg) {
-    printf("Master starts to run (i2c1)...\n");
-    for (uint8_t mem_address = 0;; mem_address = (mem_address + 32) % 256) {
-        int count = 0;
-        uint8_t msg_len = strlen(msg);
+static void receive(){
+    printf("Running slave for i2c0...\n");
+    bool created_dynamic_location = false;
+    int size_of_data = 0;
+    int ptr_in_packet_data = 0;
+    for(;;){
+        if(written == 1){
+            // This will run when the master sends the slave the bytes for the size of the data that will be send over
+            // Checking if dynamic location is being created already
+            if(!created_dynamic_location){
+                received_data[data_index] = '\0';
+                size_of_data = atoi(received_data);
+                // +1 because we need an extra 1 space for the null terminating byte
+                packet_data = (char *)malloc(sizeof(char) * (size_of_data + 1));
+                created_dynamic_location = true;
+                ptr_in_packet_data = 0;
+            }
+            else{
+                // This should only run when the master sends the slave the data
+                // The reason why data_index is used here is because data_index contains the number of bytes that the master has sent to the slave
+                // So, using the same number of bytes, to write into the new dynamic buffer created by malloc
+                memcpy(packet_data + ptr_in_packet_data, received_data, data_index);
+                // Increment the pointer of ptr_in_packet_data so that we can memcpy the remaining bytes into the buffer
+                ptr_in_packet_data += data_index;
+                if(ptr_in_packet_data >= size_of_data){
+                    packet_data[ptr_in_packet_data] = '\0';
+                    printf("This is packet_data: %s\n", packet_data);
+                    created_dynamic_location = false;
+                    received = true;
+                    free(packet_data);
+                }
 
-        // Now I will send the data
-        uint8_t buf[32];
-        buf[0] = mem_address;
-        memcpy(buf + 1, msg, msg_len);
-        sleep_ms(1000);
-        count = i2c_write_blocking(i2c1, I2C_SLAVE_ADDRESS, buf, 1 + msg_len, false);
-        if (count < 0) {
-            puts("Couldn't write to slave, please check your wiring!");
-            return;
+            }
+            written = 0;
         }
-        hard_assert(count == 1 + msg_len);
-        puts("");
-        sleep_ms(2000);
+        sleep_ms(500);
     }
 }
 
-char * receive_master() {
-    while (!received)
-        sleep_ms(100);
-    
-    received = false;
-    return received_data;
+static void send_slave(char * msg) {
+    int count = 0;
+    int msg_len = strlen(msg);
+
+    // Send over the size
+    uint8_t buf_len[20];
+    sprintf(buf_len, "%d", msg_len);
+    int len = strlen(buf_len);
+    printf("Sending size\n");
+    count = i2c_write_blocking(i2c1, I2C_SLAVE_ADDRESS, buf_len, len, false);
+    sleep_ms(5000);
+
+    // Now I will send the data
+    uint8_t buf[msg_len];
+    memcpy(buf, msg, msg_len);
+    printf("Sending data\n");
+    send_data(i2c1, I2C_SLAVE_ADDRESS, buf, msg_len);
+
+    puts("");
 }
 
-
-int master(char * packet_data) {
+int main() {
     stdio_init_all();
     sleep_ms(5000);
+    char packet_data[] = "HTTP/1.1 200 OK\r\n"
+        "Date: Tue, 21 Nov 2023 12:45:26 GMT\r\n"
+        "Server: Apache/2.4.1 (Unix)\r\n"
+        "Content-Type: text/html; charset=UTF-8\r\n"
+        "Content-Length: 1234\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "<!DOCTYPE html>\r\n"
+        "<html>\r\n"
+        "<head>\r\n"
+        "    <title>Example Page</title>\r\n"
+        "</head>\r\n"
+        "<body>\r\n"
+        "    <h1>Hello, Slave!</h1>\r\n"
+        "    <p>This is an example page.</p>\r\n"
+        "</body>\r\n"
+        "</html>\r\n";
     setup_master();
     setup_slave();
+    // Master for i2c1 sends data first
     send_slave(packet_data);
+    // Wait for response from slave on i2c0
+    receive();
     return 0;
 }
