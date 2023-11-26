@@ -24,7 +24,7 @@ bool finishedReceiving = false;
 // \param proto protocol string
 // \param data data to be encoded in base64
 // \param data_len length of data to be encoded
-char *i2c_serialize(char *dst_ip, int port, char *proto, BYTE *data,
+char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
                     int data_len) {
     char data_encoded[MAX_MESSAGE_SIZE - 256];
     const char *delimiter = DELIMITER;
