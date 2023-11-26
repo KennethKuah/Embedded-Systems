@@ -1,15 +1,20 @@
+# add external repo subdirectory to build sd card interface
+add_subdirectory(${PROJECT_SOURCE_DIR}/include/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src build)
 # add subdirectory for custom lwip library
 add_subdirectory(lwip_custom)
 
 # pico 1 source files
 add_executable(pico-1
         pico-1.c
+        hw_config.c
         common/b64.c
         i2c_bridge/i2c_bridge.c
         net_config/net_config.c
         net_config/dhcpserver/dhcpserver.c
         net_config/dnsserver/dnsserver.c
         net_config/tcpserver/tcpserver.c
+        pcap_helper/sd_card.c
+        pcap_helper/pcap.c
 )
 
 # pico 1 include directories for referencing driver/helper header files
@@ -21,11 +26,14 @@ target_include_directories(pico-1 PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/net_config/dhcpserver
         ${CMAKE_CURRENT_LIST_DIR}/net_config/dnsserver
         ${CMAKE_CURRENT_LIST_DIR}/net_config/tcpserver
+        ${CMAKE_CURRENT_LIST_DIR}/pcap_helper
 )
 
 # pico 1 target compile definitions
 target_compile_definitions(pico-1 PRIVATE
         IP_FORWARD=1
+        SD_MOUNTED=0
+        PCAP_OVERWRITE=0
 )
 
 # pico 1 common dependencies
@@ -37,7 +45,8 @@ target_link_libraries(pico-1
         pico_lwip_custom # modified lwip library
         pico_lwip_iperf
         pico_i2c_slave
-        FreeRTOS-Kernel-Heap4
+        FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
+        FatFs_SPI # SD Card library
 )
 
 # pico 2 source files
