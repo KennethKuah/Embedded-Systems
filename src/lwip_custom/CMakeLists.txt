@@ -1,10 +1,11 @@
+set(RP2_COMMON_PATH ${PICO_SDK_PATH}/src/rp2_common)
 set(PICO_LWIP_PATH ${PICO_SDK_PATH}/lib/lwip)
 set (LWIP_INCLUDE_DIRS
-    ${CMAKE_CURRENT_LIST_DIR}/include
-    ${PICO_LWIP_PATH}/contrib
-    ${PICO_LWIP_PATH}/contrib/ports/freertos/include
-    ${CMAKE_CURRENT_LIST_DIR}/../net_config/
-        )
+        ${CMAKE_CURRENT_LIST_DIR}/include
+        ${PICO_LWIP_PATH}/contrib
+        ${PICO_LWIP_PATH}/contrib/ports/freertos/include
+        ${CMAKE_CURRENT_LIST_DIR}/../net_config/
+)
 
 pico_add_library(pico_lwip_core4_custom NOFLAG)
 target_sources(pico_lwip_core4_custom INTERFACE
@@ -53,6 +54,7 @@ target_sources(pico_lwip_custom INTERFACE
 
         # modified sources of pico_lwip_api interface
         ${CMAKE_CURRENT_LIST_DIR}/tcpip.c
+        ${RP2_COMMON_PATH}/pico_lwip/lwip_freertos.c
         )
 
 pico_mirrored_target_link_libraries(pico_lwip_custom INTERFACE
