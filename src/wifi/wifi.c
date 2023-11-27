@@ -5,7 +5,7 @@ server_conn_t *conn_list = NULL;
 int setup_wifi()
 {
     if (cyw43_arch_init()) {
-        printf("failed to initialise\n");
+        printf("Failed to initialise\n");
     }
     cyw43_arch_enable_sta_mode();
     printf("Connecting to Wi-Fi...\n");
@@ -17,6 +17,28 @@ int setup_wifi()
     else {
         printf("Connected.\n");
     }
+}
+
+int setup_ap()
+{
+    if (cyw43_arch_init()) {
+        printf("Failed to initialise\n");
+    }
+
+    cyw43_arch_enable_ap_mode(AP_SSID, AP_PW, CYW43_AUTH_WPA2_AES_PSK);
+
+    ip_addr_t gateway;
+    ip4_addr_t mask;
+    IP4_ADDR(ip_2_ip4(&gateway), 192, 168, 9, 1);
+    IP4_ADDR(ip_2_ip4(&mask), 255, 255, 255, 0);
+
+    // Start the dhcp server
+    dhcp_server_t dhcp_server;
+    dhcp_server_init(&dhcp_server, &gateway, &mask);
+
+    // Start the dns server
+    dns_server_t dns_server;
+    dns_server_init(&dns_server, &gateway);
 }
 
 void insert_new_conn(int server_sock, char *dst_ip, int port)
@@ -152,7 +174,6 @@ char *i2c_serialize(char *dst, int port, char *proto, BYTE *data, int data_len)
 // dst_ip:port:protocol:base64_data:decoded_data_len
 i2c_data_t *i2c_deserialize(char *buf)
 {
-    printf("HELLO\n");
     int idx = 0;
     int oset = 0;
     char tokens[5][MAX_MESSAGE_SIZE / 4];
@@ -177,7 +198,7 @@ i2c_data_t *i2c_deserialize(char *buf)
 
     i2c_data_t *i2c_data = (i2c_data_t *)malloc(sizeof(i2c_data_t));
 
-    if(i2c_data != NULL) {
+    if (i2c_data != NULL) {
         i2c_data->dst_ip = tokens[0];
         char *end_ptr;
         i2c_data->port = strtol(tokens[1], &end_ptr, 10);
@@ -191,9 +212,31 @@ i2c_data_t *i2c_deserialize(char *buf)
 
 void test_conns()
 {
+
     char request[1024];
+
     sprintf(request, "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n",
             "34.223.124.45");
+
+    char *data =
+        i2c_serialize("34.22.124.45", 80, "TCP", request, strlen(request));
+    printf("[+] Serialised Data: %s\n", data);
+    free(data);
+
+    i2c_data_t *i2c_data =
+        i2c_deserialize("34.22.124.45:80:TCP:"
+                        "R0VUIC8gSFRUUC8xLjENCkhvc3Q6IDM0LjIyMy4xMjQuNDUNCkNvbm"
+                        "5lY3Rpb246IGNsb3NlDQoNCg==:58");
+
+    printf("[DESERIALIZED DATA]\n");
+    printf("d_ip: %s\n", i2c_data->dst_ip);
+    printf("d_port: %d\n", i2c_data->port);
+    printf("decoded_data_length: %d\n", i2c_data->data_len);
+    printf("data: \n");
+
+    for (int i = 0; i < i2c_data->data_len; ++i) {
+        printf("%c", i2c_data->data[i]);
+    }
 
     new_tcp_tunnel("34.223.124.45", 80);
 
@@ -203,23 +246,50 @@ void test_conns()
         send_tunnel(server_sock, request, strlen(request));
     }
 
-    BYTE test[8] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
-    char *data = i2c_serialize("testing.com", 8000, "TCP", test, sizeof(test));
-
-    free(data);
-
-    printf("Data: %s\n", data);
-
-    i2c_data_t *i2c_data = i2c_deserialize("testing.com:8000:TCP:dGVzdA==:4");
-
-    printf("%s\n", i2c_data->dst_ip);
-    printf("%d\n", i2c_data->port);
-
-    for(int i = 0; i < i2c_data->data_len; ++i) {
-        printf("%x ", i2c_data->data[i]);
+    char recv_buffer[1024];
+    int recv_bytes;
+    while (1) {
+        recv_bytes = recv(server_sock, recv_buffer, 1024 - 1, 0);
+        recv_buffer[recv_bytes] = '\0';
+        printf("%s\n", recv_buffer);
+        if (recv_bytes <= 0) {
+            break;
+        }
     }
+}
 
-    char *data2 = i2c_serialize("testing2.com", 8080, "UDP", test, sizeof(test));
-    printf("%s\n", data2);
-    free(data2);
+void found_dns(const char *hostname, const ip_addr_t *ipaddr, void *arg)
+{
+    dns_t *state = (dns_t *)arg;
+    if (ipaddr) {
+        char *address = ipaddr_ntoa(ipaddr);
+        printf("%s\n", address);
+        state->completed = 1;
+    }
+    else {
+        state->completed = -1;
+    }
+}
+
+void test_dns()
+{
+    printf("Testing DNS...\n");
+    ip_addr_t cached_addr;
+    char *domain = "google.com";
+
+    dns_t *state;
+    state->domain = domain;
+    state->completed = 0;
+
+    printf("Querying %s\n", domain);
+
+    while (!state->completed) {
+        err_t query = dns_gethostbyname(domain, &cached_addr, found_dns, state);
+        if (query == ERR_OK) {
+            state->completed = 1;
+        }
+        else if (query != ERR_INPROGRESS) {
+            state->completed = -1;
+        }
+    }
 }
