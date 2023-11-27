@@ -5,15 +5,10 @@
 #include "pico/stdlib.h"
 // FreeRTOS libraries
 #include "FreeRTOS.h"
-#include "message_buffer.h"
 #include "task.h"
 // custom drivers/helper libraries
 #include "net_config.h"
 #include "i2c_bridge.h"
-
-#ifndef RUN_FREERTOS_ON_CORE
-#define RUN_FREERTOS_ON_CORE 0
-#endif
 
 #define SKIP_SCAN 0
 

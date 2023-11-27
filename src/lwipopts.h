@@ -1,5 +1,5 @@
-#ifndef _LWIPOPTS_EXAMPLE_COMMONH_H
-#define _LWIPOPTS_EXAMPLE_COMMONH_H
+#ifndef _LWIPOPTS_H
+#define _LWIPOPTS_H
 
 
 // Common settings used in most of the pico_w examples
@@ -81,15 +81,20 @@
 #endif /* __LWIPOPTS_H__ */
 
 #if !NO_SYS
-#define TCPIP_THREAD_STACKSIZE 1024
+#define TCPIP_THREAD_STACKSIZE 2048
 #define DEFAULT_THREAD_STACKSIZE 1024
 #define DEFAULT_RAW_RECVMBOX_SIZE 8
 #define TCPIP_MBOX_SIZE 8
+
+#define DEFAULT_UDP_RECVMBOX_SIZE TCPIP_MBOX_SIZE
+#define DEFAULT_TCP_RECVMBOX_SIZE TCPIP_MBOX_SIZE
+#define DEFAULT_ACCEPTMBOX_SIZE TCPIP_MBOX_SIZE
+
 #define LWIP_TIMEVAL_PRIVATE 0
 
 // not necessary, can be done either way
 #define LWIP_TCPIP_CORE_LOCKING_INPUT 1
 
 // ping_thread sets socket receive timeout, so enable this feature
-#define LWIP_SO_RCVTIMEO 1
+#define LWIP_SO_RCVTIMEO 0
 #endif

@@ -12,7 +12,7 @@
 
 // Serialization definitions
 #define MAX_BUF_LEN 256
-#define MAX_MESSAGE_SIZE 30000
+#define MAX_MESSAGE_SIZE 15000
 #define DELIMITER ":"
 // I2C definitions
 #define I2C_MAX_BUF_LEN 512
@@ -22,17 +22,17 @@
 
 typedef unsigned char BYTE;
 
-typedef struct {
+typedef struct I2CData {
     char *dst_ip;
     int port;
     BYTE *proto;
     BYTE *data;
     int data_len;
-} I2CData;
+} i2c_data_t;
 
 char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
                     int data_len);
-I2CData *i2c_deserialize(char *buf);
+i2c_data_t *i2c_deserialize(char *buf);
 void init_i2c_pico_1();
 void init_i2c_pico_2();
 int send_i2c(char* msg);

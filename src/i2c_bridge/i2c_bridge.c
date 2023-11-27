@@ -57,7 +57,7 @@ char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
 // Expects a string in the following format
 // `dst_ip:port:protocol:base64_data`
 // \param buf serialized data received from I2C channel
-I2CData *i2c_deserialize(char *buf) {
+i2c_data_t *i2c_deserialize(char *buf) {
     int idx = 0;
     int oset = 0;
     char tokens[5][MAX_MESSAGE_SIZE / 5];
@@ -80,7 +80,7 @@ I2CData *i2c_deserialize(char *buf) {
     int decoded_len =
         base64_decode(data_decoded, data_encoded, strlen(data_encoded));
 
-    I2CData *i2c_data = (I2CData *)malloc(sizeof(I2CData));
+    i2c_data_t *i2c_data = (i2c_data_t *)malloc(sizeof(i2c_data_t));
 
     if(i2c_data != NULL) {
         i2c_data->dst_ip = tokens[0];
