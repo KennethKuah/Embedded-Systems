@@ -38,16 +38,22 @@ char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
                     int data_len) {
     char data_encoded[MAX_MESSAGE_SIZE - 256];
     const char *delimiter = DELIMITER;
-    int encoded_len = base64_encode(data_encoded, data, data_len);
+    int encoded_len;
     char *buf = (char *)calloc(MAX_MESSAGE_SIZE, sizeof(char));
-    char port_str[10];
-    sprintf(port_str, "%d", port);
-    strcat(buf, dst_ip);
+    // Encode Destination IP
+    encoded_len = base64_encode(data_encoded, dst_ip, sizeof(dst_ip));
+    strcat(buf, data_encoded);
     strcat(buf, delimiter);
-    strcat(buf, port_str);
+    // Encode Port Number
+    encoded_len = base64_encode(data_encoded, (BYTE*)port, sizeof((BYTE*)port));
+    strcat(buf, data_encoded);
     strcat(buf, delimiter);
-    strcat(buf, proto);
+    // Encode Protocol Type (TCP/UDP)
+    encoded_len = base64_encode(data_encoded, proto, sizeof(proto));
+    strcat(buf, data_encoded);
     strcat(buf, delimiter);
+    // Encode Packet Payload
+    encoded_len = base64_encode(data_encoded, data, data_len);
     strcat(buf, data_encoded);
 
     return buf;
@@ -223,6 +229,7 @@ void wait_for_data() {
     }
 }
 
+// Returns packet data as a string
 char* recv_i2c() {
     while (!finishedReceiving)
         tight_loop_contents();
