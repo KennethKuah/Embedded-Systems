@@ -186,13 +186,16 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
 
     // Query Pico-2 for the DNS answer
     char* serialized_data = i2c_serialize(dns_domain, 53, "UDP", dns_msg, msg_len);
+    printf("serialized data: %s\n", serialized_data);
     send_i2c(serialized_data);
     free(serialized_data);
+    wait_for_data();
     serialized_data = recv_i2c();
+    
     i2c_data_t* i2c_data = i2c_deserialize(serialized_data);
     uint8_t* dns_answer = i2c_data->data;
 
-    const uint8_t *answer_ptr_start = dns_answer + msg_len;
+    // const uint8_t *answer_ptr_start = dns_answer + msg_len;
     size_t answer_len = i2c_data->data_len - msg_len;
 
     // Skip QNAME and QTYPE
@@ -202,7 +205,13 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     uint8_t *answer_ptr = dns_msg + (question_ptr - dns_msg);
 
     // Use the answer from i2c serial
-    memcpy(answer_ptr, answer_ptr_start, answer_len);
+    // memcpy(answer_ptr, answer_ptr_start, answer_len);
+    printf("answer bytes: %d\n", answer_len);
+    for(int i = 0; i < answer_len; ++i) {
+            printf("%02x ", i2c_data->data[i + msg_len]);
+            *answer_ptr++ = i2c_data->data[i + msg_len];
+        }
+    printf("\n");
 
     // *answer_ptr++ = 0xc0; // pointer
     // *answer_ptr++ = question_ptr_start - dns_msg; // pointer to question
