@@ -10,7 +10,7 @@
 //
 #include "b64.h"
 
-#define DEBUG_I2C 1
+#define DEBUG_I2C 0
 // Serialization definitions
 #define MAX_BUF_LEN 256
 #define MAX_MESSAGE_SIZE 15000

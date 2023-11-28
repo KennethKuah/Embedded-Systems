@@ -205,9 +205,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     uint8_t *answer_ptr = dns_msg + (question_ptr - dns_msg);
 
     // Use the answer from i2c serial
-    printf("answer bytes: %d\n", answer_len);
     for (int i = 0; i < answer_len; i++){
-        printf("%02x ", dns_answer[msg_len + i]);
         *answer_ptr++ = dns_answer[msg_len + i];
     }
 
