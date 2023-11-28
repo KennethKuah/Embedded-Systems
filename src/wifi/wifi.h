@@ -49,6 +49,8 @@ typedef struct DNS_T {
 #define MAX_MESSAGE_SIZE 1000
 #define AP_SSID "mypicow"
 #define AP_PW "password"
+#define DNS_IP "8.8.8.8"
+#define DNS_PORT 53
 
 extern server_conn_t *conn_list;
 

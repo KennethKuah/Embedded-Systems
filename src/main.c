@@ -10,7 +10,7 @@
 void main_task(__unused void *params)
 {
     setup_wifi();
-    test_conns();
+    test_dns();
     while (true) {
         // not much to do as LED is in another task, and we're using RAW
         // (callback) lwIP API
