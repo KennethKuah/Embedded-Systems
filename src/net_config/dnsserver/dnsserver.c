@@ -13,6 +13,8 @@
 #include "dnsserver.h"
 #include "lwip/udp.h"
 
+#include "pcap.h"
+
 #define PORT_DNS_SERVER 53
 #define DUMP_DATA 0
 
@@ -211,6 +213,10 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
 
     // Send the reply
     DEBUG_printf("Sending %d byte reply to %s:%d\n", answer_ptr - dns_msg, ipaddr_ntoa(src_addr), src_port);
+    if (SD_MOUNTED)
+    {
+        write_packet(p);
+    }
     dns_socket_sendto(&d->udp, &dns_msg, answer_ptr - dns_msg, src_addr, src_port);
 
 ignore_request:

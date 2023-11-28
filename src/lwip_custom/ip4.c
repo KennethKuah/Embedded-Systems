@@ -60,6 +60,52 @@
 
 #include <string.h>
 
+#include "pcap.h"
+
+err_t tcpsendcustsom(struct pbuf* p)
+{
+  
+}
+void check_p(struct pbuf* p)
+{}
+void printpp(struct pbuf* p)
+{
+	struct ip_hdr *iphdr = (struct ip_hdr *)p->payload;
+
+	printf("IP header:\n");
+	printf("+-------------------------------+\n");
+	printf("|%2"U16_F" |%2"U16_F" |  0x%02"X16_F" |     %5"U16_F"     | (v, hl, tos, len)\n",
+				(u16_t)IPH_V(iphdr),
+				(u16_t)IPH_HL(iphdr),
+				(u16_t)IPH_TOS(iphdr),
+				lwip_ntohs(IPH_LEN(iphdr)));
+	printf("+-------------------------------+\n");
+	printf("|    %5"U16_F"      |%"U16_F"%"U16_F"%"U16_F"|    %4"U16_F"   | (id, flags, offset)\n",
+				lwip_ntohs(IPH_ID(iphdr)),
+				(u16_t)(lwip_ntohs(IPH_OFFSET(iphdr)) >> 15 & 1),
+				(u16_t)(lwip_ntohs(IPH_OFFSET(iphdr)) >> 14 & 1),
+				(u16_t)(lwip_ntohs(IPH_OFFSET(iphdr)) >> 13 & 1),
+				(u16_t)(lwip_ntohs(IPH_OFFSET(iphdr)) & IP_OFFMASK));
+	printf("+-------------------------------+\n");
+	printf("|  %3"U16_F"  |  %3"U16_F"  |    0x%04"X16_F"     | (ttl, proto, chksum)\n",
+				(u16_t)IPH_TTL(iphdr),
+				(u16_t)IPH_PROTO(iphdr),
+				lwip_ntohs(IPH_CHKSUM(iphdr)));
+	printf("+-------------------------------+\n");
+	printf("|  %3"U16_F"  |  %3"U16_F"  |  %3"U16_F"  |  %3"U16_F"  | (src)\n",
+				ip4_addr1_16_val(iphdr->src),
+				ip4_addr2_16_val(iphdr->src),
+				ip4_addr3_16_val(iphdr->src),
+				ip4_addr4_16_val(iphdr->src));
+	printf("+-------------------------------+\n");
+	printf("|  %3"U16_F"  |  %3"U16_F"  |  %3"U16_F"  |  %3"U16_F"  | (dest)\n",
+				ip4_addr1_16_val(iphdr->dest),
+				ip4_addr2_16_val(iphdr->dest),
+				ip4_addr3_16_val(iphdr->dest),
+				ip4_addr4_16_val(iphdr->dest));
+	printf("+-------------------------------+\n");
+}
+
 #ifdef LWIP_HOOK_FILENAME
 #include LWIP_HOOK_FILENAME
 #endif
@@ -397,6 +443,10 @@ ip4_forward(struct pbuf *p, struct ip_hdr *iphdr, struct netif *inp)
     return;
   }
   /* transmit pbuf on chosen interface */
+	if (SD_MOUNTED)
+	{
+		write_packet(p);
+	}
   netif->output(netif, p, ip4_current_dest_addr());
   return;
 return_noroute:
@@ -649,6 +699,25 @@ ip4_input(struct pbuf *p, struct netif *inp)
     }
   }
 
+if (ip4_current_dest_addr() && IPH_PROTO(iphdr) == IP_PROTO_UDP)
+{
+  u8_t *tcp_udp_data = ((u8_t *)p->payload) + IP_HLEN;
+  struct udp_hdr *uh = (struct udp_hdr*)tcp_udp_data;
+  // printf("IP: ", iphdr->src, iphdr->dest);
+  // printf("|  %3"U16_F"  |  %3"U16_F"  |  %3"U16_F"  |  %3"U16_F"  | (src)\n",
+  //       ip4_addr1_16_val(ip  hdr->src),
+  //       ip4_addr2_16_val(iphdr->src),
+  //       ip4_addr3_16_val(iphdr->src),
+  //       ip4_addr4_16_val(iphdr->src));
+  // printf("+-------------------------------+\n");
+  // printf("|  %3"U16_F"  |  %3"U16_F"  |  %3"U16_F"  |  %3"U16_F"  | (dest)\n",
+  //       ip4_addr1_16_val(iphdr->dest),
+  //       ip4_addr2_16_val(iphdr->dest),
+  //       ip4_addr3_16_val(iphdr->dest),
+  //       ip4_addr4_16_val(iphdr->dest));
+  // printf("Src: %u Dst: %u\n", lwip_ntohs(uh->src), lwip_htons(uh->dest));
+}
+
   /* packet not for us? */
   if (netif == NULL) {
     /* packet not for us, route or discard */
@@ -661,7 +730,8 @@ ip4_input(struct pbuf *p, struct netif *inp)
 			u8_t *tcp_udp_data = ((u8_t *)p->payload) + IP_HLEN;
 			struct tcp_hdr *th = (struct tcp_hdr*)tcp_udp_data;
 			char* serialized_data = i2c_serialize((char *)ip_current_dest_addr(), th->src, IPH_PROTO(iphdr), p->payload, p->len);
-			send_i2c(serialized_data);
+			//send_i2c(serialized_data);
+			
     } else
 #endif /* IP_FORWARD */
     {
@@ -827,6 +897,7 @@ ip4_output_if(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
               u8_t ttl, u8_t tos,
               u8_t proto, struct netif *netif)
 {
+	check_p(p);
 #if IP_OPTIONS_SEND
   return ip4_output_if_opt(p, src, dest, ttl, tos, proto, netif, NULL, 0);
 }
@@ -843,6 +914,7 @@ ip4_output_if_opt(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
                   u16_t optlen)
 {
 #endif /* IP_OPTIONS_SEND */
+check_p(p);
   const ip4_addr_t *src_used = src;
   if (dest != LWIP_IP_HDRINCL) {
     if (ip4_addr_isany(src)) {
@@ -867,6 +939,7 @@ ip4_output_if_src(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
                   u8_t ttl, u8_t tos,
                   u8_t proto, struct netif *netif)
 {
+check_p(p);
 #if IP_OPTIONS_SEND
   return ip4_output_if_opt_src(p, src, dest, ttl, tos, proto, netif, NULL, 0);
 }
@@ -881,6 +954,7 @@ ip4_output_if_opt_src(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *d
                       u16_t optlen)
 {
 #endif /* IP_OPTIONS_SEND */
+check_p(p);
   struct ip_hdr *iphdr;
   ip4_addr_t dest_addr;
 #if CHECKSUM_GEN_IP_INLINE
@@ -1043,6 +1117,10 @@ ip4_output_if_opt_src(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *d
 #endif /* IP_FRAG */
 
   LWIP_DEBUGF(IP_DEBUG, ("ip4_output_if: call netif->output()\n"));
+	ip4_addr_t des;
+	des.addr = 0xC0A80410;
+	// printpp(p);
+	// printf("Error %d" , netif->output(netif, p, &des));
   return netif->output(netif, p, dest);
 }
 
@@ -1070,14 +1148,17 @@ ip4_output(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
   struct netif *netif;
 
   LWIP_IP_CHECK_PBUF_REF_COUNT_FOR_TX(p);
-
+	printf("Yes");
   if ((netif = ip4_route_src(src, dest)) == NULL) {
     LWIP_DEBUGF(IP_DEBUG, ("ip4_output: No route to %"U16_F".%"U16_F".%"U16_F".%"U16_F"\n",
                            ip4_addr1_16(dest), ip4_addr2_16(dest), ip4_addr3_16(dest), ip4_addr4_16(dest)));
     IP_STATS_INC(ip.rterr);
     return ERR_RTE;
   }
-
+	if (SD_MOUNTED)
+	{
+		write_packet(p);
+	}
   return ip4_output_if(p, src, dest, ttl, tos, proto, netif);
 }
 

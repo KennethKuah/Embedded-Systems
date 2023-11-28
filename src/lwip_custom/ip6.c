@@ -61,6 +61,8 @@
 #include "lwip/stats.h"
 #include "i2c_bridge/i2c_bridge.h"
 
+#include "pcap.h"
+
 #ifdef LWIP_HOOK_FILENAME
 #include LWIP_HOOK_FILENAME
 #endif
@@ -692,7 +694,7 @@ netif_found:
       u8_t *tcp_udp_data = ((u8_t *)p->payload) + IP6_HLEN;
 			struct tcp_hdr *th = (struct tcp_hdr*)tcp_udp_data;
 			char* serialized_data = i2c_serialize((char *)ip6_current_dest_addr(), th->src, ip6hdr->_nexth, p->payload, p->len);
-			send_i2c(serialized_data);
+			//send_i2c(serialized_data);
     }
 #endif /* LWIP_IPV6_FORWARD */
     pbuf_free(p);
@@ -1271,6 +1273,10 @@ ip6_output_if_src(struct pbuf *p, const ip6_addr_t *src, const ip6_addr_t *dest,
 #endif /* LWIP_IPV6_FRAG */
 
   LWIP_DEBUGF(IP6_DEBUG, ("netif->output_ip6()\n"));
+  if (SD_MOUNTED)
+	{
+		write_packet(p);
+	}
   return netif->output_ip6(netif, p, dest);
 }
 
