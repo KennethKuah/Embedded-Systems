@@ -4,7 +4,6 @@
 #include "pico/stdlib.h"
 // FreeRTOS libraries
 #include "FreeRTOS.h"
-#include "message_buffer.h"
 #include "task.h"
 // custom drivers/helper libraries
 #include "net_config.h"

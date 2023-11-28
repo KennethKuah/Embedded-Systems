@@ -11,6 +11,7 @@
 #include <stdbool.h>
 
 #include "dnsserver.h"
+#include "i2c_bridge.h"
 #include "lwip/udp.h"
 
 #include "pcap.h"
@@ -153,6 +154,10 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     const uint8_t *question_ptr_start = dns_msg + sizeof(dns_header_t);
     const uint8_t *question_ptr_end = dns_msg + msg_len;
     const uint8_t *question_ptr = question_ptr_start;
+
+    char dns_domain[MAX_DOMAIN_LEN];
+    char* dns_domain_ptr = dns_domain;
+
     while(question_ptr < question_ptr_end) {
         if (*question_ptr == 0) {
             question_ptr++;
@@ -160,6 +165,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
         } else {
             if (question_ptr > question_ptr_start) {
                 DEBUG_printf(".");
+                strncpy(dns_domain_ptr++, ".", 1);
             }
             int label_len = *question_ptr++;
             if (label_len > 63) {
@@ -167,7 +173,9 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
                 goto ignore_request;
             }
             DEBUG_printf("%.*s", label_len, question_ptr);
+            snprintf(dns_domain_ptr, sizeof(dns_domain),"%.*s", label_len, question_ptr);
             question_ptr += label_len;
+            dns_domain_ptr+= label_len;
         }
     }
     DEBUG_printf("\n");
@@ -178,28 +186,44 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
         goto ignore_request;
     }
 
+    // Query Pico-2 for the DNS answer
+    char* serialized_data = i2c_serialize(dns_domain, 53, "UDP", dns_msg, msg_len);
+    send_i2c(serialized_data);
+    free(serialized_data);
+    serialized_data = recv_i2c();
+    i2c_data_t* i2c_data = i2c_deserialize(serialized_data);
+    uint8_t* dns_answer = i2c_data->data;
+
+    const uint8_t *answer_ptr_start = dns_answer + msg_len;
+    size_t answer_len = i2c_data->data_len - msg_len;
+
     // Skip QNAME and QTYPE
     question_ptr += 4;
 
     // Generate answer
     uint8_t *answer_ptr = dns_msg + (question_ptr - dns_msg);
-    *answer_ptr++ = 0xc0; // pointer
-    *answer_ptr++ = question_ptr_start - dns_msg; // pointer to question
+
+    // Use the answer from i2c serial
+    memcpy(answer_ptr, answer_ptr_start, answer_len);
+
+    // *answer_ptr++ = 0xc0; // pointer
+    // *answer_ptr++ = question_ptr_start - dns_msg; // pointer to question
     
-    *answer_ptr++ = 0;
-    *answer_ptr++ = 1; // host address
+    // *answer_ptr++ = 0;
+    // *answer_ptr++ = 1; // host address
 
-    *answer_ptr++ = 0;
-    *answer_ptr++ = 1; // Internet class
+    // *answer_ptr++ = 0;
+    // *answer_ptr++ = 1; // Internet class
 
-    *answer_ptr++ = 0;
-    *answer_ptr++ = 0;
-    *answer_ptr++ = 0;
-    *answer_ptr++ = 60; // ttl 60s
+    // *answer_ptr++ = 0;
+    // *answer_ptr++ = 0;
+    // *answer_ptr++ = 0;
+    // *answer_ptr++ = 60; // ttl 60s
 
-    *answer_ptr++ = 0;
-    *answer_ptr++ = 4; // length
-    memcpy(answer_ptr, &d->ip.addr, 4); // use our address
+    // *answer_ptr++ = 0;
+    // *answer_ptr++ = 4; // length
+    // memcpy(answer_ptr, &d->ip.addr, 4); // use our address
+    
     answer_ptr += 4;
 
     dns_hdr->flags = lwip_htons(
