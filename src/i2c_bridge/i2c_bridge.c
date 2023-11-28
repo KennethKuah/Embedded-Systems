@@ -36,25 +36,23 @@ uint8_t slave_address;
 // \param data_len length of data to be encoded
 char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
                     int data_len) {
-    char data_encoded[MAX_MESSAGE_SIZE - 256];
+	char data_encoded[MAX_MESSAGE_SIZE - 256];
     const char *delimiter = DELIMITER;
-    int encoded_len;
+    int encoded_len = base64_encode(data_encoded, data, data_len);
     char *buf = (char *)calloc(MAX_MESSAGE_SIZE, sizeof(char));
-    // Encode Destination IP
-    encoded_len = base64_encode(data_encoded, dst_ip, sizeof(dst_ip));
+    char port_str[10];
+    sprintf(port_str, "%d", port);
+    char data_len_str[10];
+    sprintf(data_len_str, "%d", data_len);
+    strcat(buf, dst);
+    strcat(buf, delimiter);
+    strcat(buf, port_str);
+    strcat(buf, delimiter);
+    strcat(buf, proto);
+    strcat(buf, delimiter);
     strcat(buf, data_encoded);
     strcat(buf, delimiter);
-    // Encode Port Number
-    encoded_len = base64_encode(data_encoded, (BYTE*)port, sizeof((BYTE*)port));
-    strcat(buf, data_encoded);
-    strcat(buf, delimiter);
-    // Encode Protocol Type (TCP/UDP)
-    encoded_len = base64_encode(data_encoded, proto, sizeof(proto));
-    strcat(buf, data_encoded);
-    strcat(buf, delimiter);
-    // Encode Packet Payload
-    encoded_len = base64_encode(data_encoded, data, data_len);
-    strcat(buf, data_encoded);
+    strcat(buf, data_len_str);
 
     return buf;
 }
@@ -63,12 +61,13 @@ char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
 // Expects a string in the following format
 // `dst_ip:port:protocol:base64_data`
 // \param buf serialized data received from I2C channel
-i2c_data_t *i2c_deserialize(char *buf) {
+i2c_data_t *i2c_deserialize(char *buf)
+{
     int idx = 0;
     int oset = 0;
-    char tokens[5][MAX_MESSAGE_SIZE / 5];
+    char tokens[5][MAX_MESSAGE_SIZE / 4];
     for (int i = 0; i <= strlen(buf); ++i) {
-        if (buf[i] == ':') {
+        if (buf[i] == DELIMITER) {
             // null terminate token
             tokens[idx][oset] = '\x00';
             idx++;
@@ -79,16 +78,16 @@ i2c_data_t *i2c_deserialize(char *buf) {
         }
     }
 
-    BYTE data_decoded[MAX_MESSAGE_SIZE - 256];
+    char data_decoded[MAX_MESSAGE_SIZE - 256];
     char data_encoded[MAX_MESSAGE_SIZE - 256];
-    strcpy(data_encoded, tokens[4]);
 
+    strcpy(data_encoded, tokens[3]);
     int decoded_len =
         base64_decode(data_decoded, data_encoded, strlen(data_encoded));
 
     i2c_data_t *i2c_data = (i2c_data_t *)malloc(sizeof(i2c_data_t));
 
-    if(i2c_data != NULL) {
+    if (i2c_data != NULL) {
         i2c_data->dst_ip = tokens[0];
         char *end_ptr;
         i2c_data->port = strtol(tokens[1], &end_ptr, 10);
@@ -138,7 +137,7 @@ static void send_data(i2c_inst_t* i2c, const uint8_t slave_addr, const uint8_t* 
             printf("Error writing to slave.\n");
             break;
         }
-        sleep_ms(8000);
+        sleep_ms(1000);
     }
 }
 
@@ -178,16 +177,18 @@ int send_i2c(char* msg) {
     uint8_t buf_len[20];
     sprintf(buf_len, "%d", msg_len);
     int len = strlen(buf_len);
-    printf("Sending the length\n");
+#if DEBUG_I2C
+    printf("Sending length: %s\n", buf_len);
+#endif
     count = i2c_write_blocking(i2c_master_channel, master_address, buf_len, len, false);
-    sleep_ms(5000);
+    sleep_ms(1000);
 
     uint8_t buf[msg_len];
     memcpy(buf, msg, msg_len);
-    printf("Starting to send data...\n");
+#if DEBUG_I2C
+    printf("Sending data: %s\n", msg);
+#endif    
     send_data(i2c_master_channel, master_address, buf, msg_len);
-    puts("");
-    sleep_ms(5000);
     return 0;
 }
 
@@ -197,7 +198,10 @@ void wait_for_data() {
     int ptr_in_packet_data = 0;
     while (1) {
         if (written) {
-                        // This will run when the master sends the slave the bytes for the size of the data that will be send over
+#if DEBUG_I2C
+            printf("Received-> %s\n", received_data);
+#endif
+            // This will run when the master sends the slave the bytes for the size of the data that will be send over
             // Checking if dynamic location is being created already
             if (!created_dynamic_location) {
                 received_data[data_index] = '\0';
@@ -206,26 +210,26 @@ void wait_for_data() {
                 packet_data = (char*)malloc(sizeof(char) * (size_of_data + 1));
                 created_dynamic_location = true;
                 ptr_in_packet_data = 0;
-            }
-            else {
+            } else {
                 // This should only run when the master sends the slave the data
                 // The reason why data_index is used here is because data_index contains the number of bytes that the master has sent to the slave
                 // So, using the same number of bytes, to write into the new dynamic buffer created by malloc
+                // printf("recevied: %s\n", received_data);
                 memcpy(packet_data + ptr_in_packet_data, received_data, data_index);
                 // Increment the pointer of ptr_in_packet_data so that we can memcpy the remaining bytes into the buffer
                 ptr_in_packet_data += data_index;
-                                if (ptr_in_packet_data >= size_of_data) {
+                if (ptr_in_packet_data >= size_of_data) {
                     packet_data[ptr_in_packet_data] = '\0';
-                    printf("This is packet_data: %s\n", packet_data);
                     created_dynamic_location = false;
                     finishedReceiving = true;
+                    break;
                     // Sending back the response to master
                 }
 
             }
-            written = true;
+            written = false;
         }
-        sleep_ms(500);
+        // sleep_ms(250);
     }
 }
 

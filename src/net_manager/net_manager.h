@@ -16,6 +16,9 @@
 
 #include "i2c_bridge.h"
 
+#define DNS_IP "8.8.8.8"
+#define DNS_PORT 53
+
 typedef unsigned char   BYTE;
 
 typedef struct ServerConnection{
@@ -36,5 +39,7 @@ void insert_new_conn(int, char *, int);
 void remove_conn(char *, int);
 void print_conns();
 void test_conns();
+int send_dns_req(BYTE *, int, BYTE *);
+void test_dns();
 
 #endif

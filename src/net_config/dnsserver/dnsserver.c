@@ -188,9 +188,12 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
 
     // Query Pico-2 for the DNS answer
     char* serialized_data = i2c_serialize(dns_domain, 53, "UDP", dns_msg, msg_len);
+    printf("serialized data: %s\n", serialized_data);
     send_i2c(serialized_data);
     free(serialized_data);
+    wait_for_data();
     serialized_data = recv_i2c();
+    
     i2c_data_t* i2c_data = i2c_deserialize(serialized_data);
     uint8_t* dns_answer = i2c_data->data;
 
@@ -204,7 +207,10 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     uint8_t *answer_ptr = dns_msg + (question_ptr - dns_msg);
 
     // Use the answer from i2c serial
-    memcpy(answer_ptr, answer_ptr_start, answer_len);
+    printf("answer bytes: %d\n", answer_len);
+    for (int i = 0; i < answer_len; i++){
+        *answer_ptr++ = answer_ptr_start++;
+    }
 
     // *answer_ptr++ = 0xc0; // pointer
     // *answer_ptr++ = question_ptr_start - dns_msg; // pointer to question
@@ -224,7 +230,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     // *answer_ptr++ = 4; // length
     // memcpy(answer_ptr, &d->ip.addr, 4); // use our address
     
-    answer_ptr += 4;
+    // answer_ptr += 4;
 
     dns_hdr->flags = lwip_htons(
                 0x1 << 15 | // QR = response
@@ -242,6 +248,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
         write_packet(p);
     }
     dns_socket_sendto(&d->udp, &dns_msg, answer_ptr - dns_msg, src_addr, src_port);
+    free(i2c_data);
 
 ignore_request:
     pbuf_free(p);

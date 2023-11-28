@@ -12,9 +12,6 @@
 #include "netif/ethernet.h"
 #include "pico/cyw43_arch.h"
 
-#ifndef RUN_FREERTOS_ON_CORE
-#define RUN_FREERTOS_ON_CORE 0
-#endif
 
 #define SKIP_SCAN 1
 
