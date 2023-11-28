@@ -29,7 +29,7 @@ void dns_task(__unused void *params) {
     
     while (true) {
         wait_for_data();
-        char* serialized_data = recv_i2c();
+        char* serialized_data = i2c_recv();
         i2c_data_t *i2c_data = i2c_deserialize(serialized_data);
         free(serialized_data);
         
@@ -42,8 +42,8 @@ void dns_task(__unused void *params) {
         int bytes_received = send_dns_req(i2c_data->data, i2c_data->data_len, out_data);
 
         serialized_data = i2c_serialize(i2c_data->dst_ip, i2c_data->port, i2c_data->proto, out_data, bytes_received);
-        printf("sending: %s\n", serialized_data);
-        send_i2c(serialized_data);
+        // printf("sending: %s\n", serialized_data);
+        i2c_send(serialized_data);
         free(serialized_data);
     }
 }

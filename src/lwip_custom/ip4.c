@@ -661,7 +661,7 @@ ip4_input(struct pbuf *p, struct netif *inp)
 			// u8_t *tcp_udp_data = ((u8_t *)p->payload) + IP_HLEN;
 			// struct tcp_hdr *th = (struct tcp_hdr*)tcp_udp_data;
 			// char* serialized_data = i2c_serialize((char *)ip_current_dest_addr(), th->src, IPH_PROTO(iphdr), p->payload, p->len);
-			// send_i2c(serialized_data);
+			// i2c_send(serialized_data);
     } else
 #endif /* IP_FORWARD */
     {
