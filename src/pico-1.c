@@ -10,7 +10,7 @@
 #include "net_config.h"
 #include "i2c_bridge.h"
 
-#define SKIP_SCAN 0
+#define SKIP_SCAN 1
 
 #define WIFI_SCAN_TASK_PRIORITY				( tskIDLE_PRIORITY + 1UL )
 #define SERVER_TASK_PRIORITY				( tskIDLE_PRIORITY + 2UL )
