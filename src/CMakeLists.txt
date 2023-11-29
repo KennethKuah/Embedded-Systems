@@ -12,6 +12,7 @@ add_executable(pico-1
         net_config/net_config.c
         net_config/dhcpserver/dhcpserver.c
         net_config/dnsserver/dnsserver.c
+        net_manager/net_manager.c
         net_config/tcpserver/tcpserver.c
         pcap_helper/sd_card.c
         pcap_helper/pcap.c
@@ -26,11 +27,14 @@ target_include_directories(pico-1 PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/net_config/dhcpserver
         ${CMAKE_CURRENT_LIST_DIR}/net_config/dnsserver
         ${CMAKE_CURRENT_LIST_DIR}/net_config/tcpserver
+        ${CMAKE_CURRENT_LIST_DIR}/net_manager
         ${CMAKE_CURRENT_LIST_DIR}/pcap_helper
 )
 
 # pico 1 target compile definitions
 target_compile_definitions(pico-1 PRIVATE
+        WIFI_SSID=\"${WIFI_SSID}\"
+        WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
         IP_FORWARD=1
         SD_MOUNTED=0
         PCAP_OVERWRITE=0

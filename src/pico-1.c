@@ -8,12 +8,14 @@
 #include "task.h"
 // custom drivers/helper libraries
 #include "net_config.h"
+#include "net_manager.h"
 #include "i2c_bridge.h"
 
 #define SKIP_SCAN 1
 
-#define WIFI_SCAN_TASK_PRIORITY				( tskIDLE_PRIORITY + 1UL )
+#define CLIENT_TASK_PRIORITY				( tskIDLE_PRIORITY + 1UL )
 #define SERVER_TASK_PRIORITY				( tskIDLE_PRIORITY + 2UL )
+#define WIFI_SCAN_TASK_PRIORITY				( tskIDLE_PRIORITY + 3UL )
 
 bool ap_configured = false;
 bool comonplease = false;
@@ -72,23 +74,47 @@ void please_task(__unused void *params)
 
 void client_task(__unused void *params)
 {
-    while(true)
-    {
-        //wait_for_data();
+    vTaskDelay(500);
+    int server_sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(0);
+    memset(&server_addr, 0, sizeof(server_addr));
+    
+    if (server_sock < 0) {
+        printf("Failed to create socket\n");
+    }
+
+    printf("Socket created");
+
+    while(true) {
         char *serialized_data = i2c_recv();
         i2c_data_t* i2c_data = i2c_deserialize(serialized_data);
-        struct pbuf* p = pbuf_alloc(PBUF_RAW, ppdata_length, PBUF_RAM);
-        if (p == NULL) {
-            // Failed to allocate pbuf, handle error or return NULL
-            return;
+        char* dst_addr = i2c_data->tag;
+        inet_aton(dst_addr, &server_addr.sin_addr);
+
+        int sent_bytes =
+        sendto(server_sock, i2c_data->data, i2c_data->data_len, 0, (struct sockaddr *)&server_addr,
+                sizeof(server_addr));
+        if (sent_bytes) {
+            printf("[+] Successfully sent %d bytes\n", sent_bytes);
         }
+        else {
+            printf("[!] Failed to send");
+        }
+        //cyw43_send_ethernet(&cyw43_state, CYW43_ITF_AP, i2c_data->data_len, i2c_data->data, false);
+        // struct pbuf* p = pbuf_alloc(PBUF_RAW, ppdata_length, PBUF_RAM);
+        // if (p == NULL) {
+        //     // Failed to allocate pbuf, handle error or return NULL
+        //     return;
+        // }
 
         // Copy data to the payload of the pbuf
-        if (pbuf_take(p, i2c_data->data, i2c_data->data_len) != ERR_OK) {
-            // Error copying data, free the pbuf and handle error or return NULL
-            pbuf_free(p);
-            return;
-        }
+        // if (pbuf_take(p, i2c_data->data, i2c_data->data_len) != ERR_OK) {
+        //     // Error copying data, free the pbuf and handle error or return NULL
+        //     pbuf_free(p);
+        //     return;
+        // }
         // Access the TCP header by offsetting the payload pointer
         //struct tcp_hdr *tcphdr = (struct tcp_hdr *)((u8_t *)p->payload);
 
@@ -98,20 +124,20 @@ void client_task(__unused void *params)
         // printf("Sequence Number: %lu\n", ntohl(tcphdr->seqno));
         // printf("Acknowledgment Number: %lu\n", ntohl(tcphdr->ack_num));
         // Loop through the pbuf chain to access each buffer
-        for (struct pbuf *q = p; q != NULL; q = q->next) {
-            // Print the payload (data) in each buffer (pbuf)
-            for (u16_t i = 0; i < q->len; ++i) {
-                // Access and print each byte of the payload
-                printf("%02X ", ((u8_t *)q->payload)[i]);
+        // for (struct pbuf *q = p; q != NULL; q = q->next) {
+        //     // Print the payload (data) in each buffer (pbuf)
+        //     for (u16_t i = 0; i < q->len; ++i) {
+        //         // Access and print each byte of the payload
+        //         printf("%02X ", ((u8_t *)q->payload)[i]);
 
-                // Print a new line after every 16 bytes for better readability
-                if ((i + 1) % 16 == 0) {
-                    printf("\n");
-                }
-            }
-        }
+        //         // Print a new line after every 16 bytes for better readability
+        //         if ((i + 1) % 16 == 0) {
+        //             printf("\n");
+        //         }
+        //     }
+        // }
 
-        printf("\n"); // Print a newline at the end
+        // printf("\n"); // Print a newline at the end
         //cyw43_send_ethernet(&cyw43_state, CYW43_ITF_AP, )
         vTaskDelay(100);
     }
@@ -153,9 +179,11 @@ void server_task(__unused void *params) {
 void vLaunch(void) {
     TaskHandle_t wifiScanTask;
     TaskHandle_t serverTask;
+    TaskHandle_t clientTask;
 
     xTaskCreate(wifi_scan_task, "WiFiScanThread", configMINIMAL_STACK_SIZE, NULL, WIFI_SCAN_TASK_PRIORITY, &wifiScanTask);
     xTaskCreate(server_task, "ServerHandlingThread", configMINIMAL_STACK_SIZE, NULL, SERVER_TASK_PRIORITY, &serverTask);
+    xTaskCreate(client_task, "ClientHandlingThread", configMINIMAL_STACK_SIZE, NULL, SERVER_TASK_PRIORITY, &clientTask);
 
     /* Start the tasks and timer running. */
     vTaskStartScheduler();

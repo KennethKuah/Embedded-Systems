@@ -201,19 +201,20 @@ int run_server() {
     dhcp_server_init(&dhcp_server, &state->gw, &mask);
 
     // Start the dns server
-    dns_server_t dns_server;
-    dns_server_init(&dns_server, &state->gw);
+    // dns_server_t dns_server;
+    // dns_server_init(&dns_server, &state->gw);
 
-    if (!tcp_server_open(state, _ap_name)) {
-        DEBUG_printf("failed to open server\n");
-        return 1;
-    }
+    // if (!tcp_server_open(state, _ap_name)) {
+    //     DEBUG_printf("failed to open server\n");
+    //     return 1;
+    // }
+    printf("Try connecting to '%s'\n", _ap_name);
     while(!state->complete) {
         cyw43_arch_poll();
         cyw43_arch_wait_for_work_until(make_timeout_time_ms(1000));
     }
-    tcp_server_close(state);
-    dns_server_deinit(&dns_server);
+    // tcp_server_close(state);
+    // dns_server_deinit(&dns_server);
     dhcp_server_deinit(&dhcp_server);
     cyw43_arch_deinit();
     return 0;
