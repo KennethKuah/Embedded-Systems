@@ -189,7 +189,6 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     // printf("serialized data: %s\n", serialized_data);
     i2c_send(serialized_data);
     free(serialized_data);
-    wait_for_data();
     serialized_data = i2c_recv();
     
     i2c_data_t* i2c_data = i2c_deserialize(serialized_data);

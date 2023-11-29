@@ -10,7 +10,7 @@
 //
 #include "b64.h"
 
-#define DEBUG_I2C 0
+#define DEBUG_I2C 1
 // Serialization definitions
 #define MAX_BUF_LEN 256
 #define MAX_MESSAGE_SIZE 15000
@@ -37,7 +37,6 @@ i2c_data_t *i2c_deserialize(char *buf);
 void init_i2c_pico_1();
 void init_i2c_pico_2();
 int i2c_send(char* msg);
-void wait_for_data();
 char* i2c_recv();
 
 #endif

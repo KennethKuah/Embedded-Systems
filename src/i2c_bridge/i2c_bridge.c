@@ -10,14 +10,7 @@ static struct {
     bool mem_address_written;
 } context;
 
-volatile int data_index = 0;
-char received_data[I2C_MAX_BUF_LEN];
-volatile bool written = false;
-volatile bool ack_to_send = false;
-volatile bool acknowledged = false;
-const char ack[] = "ACK";
-// This needs to be a global variable is because I want to return it using another function
-char* packet_data = NULL;
+// I2C Static Global variables
 uint8_t I2C_MASTER_SDA_PIN; 
 uint8_t I2C_MASTER_SCL_PIN;
 uint8_t I2C_SLAVE_SDA_PIN;
@@ -26,6 +19,15 @@ i2c_inst_t* i2c_master_channel;
 i2c_inst_t* i2c_slave_channel;
 uint8_t master_address;
 uint8_t slave_address;
+// I2C ISR handling vars
+volatile int data_index = 0;
+volatile bool written = false;
+volatile bool ack_to_send = false;
+volatile bool acknowledged = false;
+volatile bool created_dynamic_location = false;
+const char ack[] = "ACK";
+char received_len[8];
+char* packet_data = NULL;
 
 // Serialises data that is transmitted via I2C.
 // Buffer is dynamically allocated, meaning it must be freed after its used
@@ -112,7 +114,10 @@ static void i2c_slave_handler(i2c_inst_t* i2c, i2c_slave_event_t event) {
             data_index = 0;
         }
         uint8_t data = i2c_read_byte_raw(i2c);
-        received_data[data_index++] = data;
+        if (!created_dynamic_location)
+            received_len[data_index++] = data;
+        else
+            packet_data[data_index++] = data;
         break;
     case I2C_SLAVE_REQUEST: // master is requesting data
         if (ack_to_send) {
@@ -138,7 +143,7 @@ static void read_data_from_slave(i2c_inst_t *i2c, uint8_t *data, size_t data_siz
     // absolute_time_t timeout = delayed_by_ms(curr_time, 2000);
     int bytes_written = 0;
     bytes_written = i2c_read_blocking(i2c, master_address, data, data_size, false);
-    if (strcmp((const char*)data, "ACK") == 0) {
+    if (strcmp((const char*)data, ack) == 0) {
 #if DEBUG_I2C
         printf("Acknowledgment received from slave: %s\n", data);
 #endif
@@ -191,7 +196,6 @@ void setup_slave(i2c_inst_t *i2c_channel, uint8_t *slave_address) {
 }
 
 int i2c_send(char* msg) {
-    int count = 0;
     int msg_len = strlen(msg);
 
     uint8_t buf_len[20];
@@ -201,7 +205,7 @@ int i2c_send(char* msg) {
     printf("Sending length: %s\n", buf_len);
 #endif
     // Send the length to slave
-    count = i2c_write_blocking(i2c_master_channel, master_address, buf_len, len, false);
+    i2c_write_blocking(i2c_master_channel, master_address, buf_len, len, false);
     // Read the acknowledgment from the slave
     uint8_t ack_buf[4] = {0}; // 4 bytes for "ACK" + null terminator
     read_data_from_slave(i2c_master_channel, ack_buf, sizeof(ack_buf) - 1);
@@ -214,58 +218,40 @@ int i2c_send(char* msg) {
     memcpy(buf, msg, msg_len);
 #if DEBUG_I2C
     printf("Sending data: %s\n", msg);
-#endif    
-    
-    send_data(i2c_master_channel, buf, msg_len);
+#endif      
+    // send_data(i2c_master_channel, buf, msg_len);
+    i2c_write_blocking(i2c_master_channel, master_address, buf, msg_len, false);
     return 0;
 }
 
-void wait_for_data() {
+char* i2c_recv() {
     bool finished_receiving = false;
-    bool created_dynamic_location = false;
+    created_dynamic_location = false;
     int size_of_data = 0;
-    int ptr_in_packet_data = 0;
     while (!finished_receiving) {
         if (written) {
             // This will run when the master sends the slave the bytes for the size of the data that will be send over
             // Checking if dynamic location is being created already
             if (!created_dynamic_location) {
-                received_data[data_index] = '\0';
-                size_of_data = atoi(received_data);
+                received_len[data_index] = '\0';
+                size_of_data = atoi(received_len);
 #if DEBUG_I2C
-                printf("Received length: %s\n", received_data);
-                printf("determined size: %d\n", size_of_data);
+                printf("Received length: %d\n", size_of_data);
 #endif
-                // +1 because we need an extra 1 space for the null terminating byte
-                packet_data = (char*)malloc(sizeof(char) * (size_of_data + 1));
+                packet_data = (char*)malloc(sizeof(char) * (size_of_data));
                 created_dynamic_location = true;
-                ptr_in_packet_data = 0;
-                data_index = 0;
             } else {
 #if DEBUG_I2C
-                printf("Received buffer: %s", received_data);
-#endif
-                // This should only run when the master sends the slave the data
-                // The reason why data_index is used here is because data_index contains the number of bytes that the master has sent to the slave
-                // So, using the same number of bytes, to write into the new dynamic buffer created by malloc
-                // printf("recevied: %s\n", received_data);
-                memcpy(packet_data + ptr_in_packet_data, received_data, data_index);
-                // Increment the pointer of ptr_in_packet_data so that we can memcpy the remaining bytes into the buffer
-                ptr_in_packet_data += data_index;
-                if (ptr_in_packet_data >= size_of_data) {
-                    packet_data[ptr_in_packet_data] = '\0';
+                printf("Received data: %s", packet_data);
+#endif          
+                if (data_index >= size_of_data){
+                    finished_receiving = true;
                     created_dynamic_location = false;
-                        finished_receiving = true;
-                        written = false;
-                        break;
                 }
             }
             written = false;
         }
     }
-}
-
-char* i2c_recv() {
     return packet_data;
 }
 
