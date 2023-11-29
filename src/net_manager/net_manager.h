@@ -74,7 +74,7 @@ void print_conns(client_t *);
 void test_conns();
 void set_payload(struct pbuf *, const char *, u16_t);
 void test_send_ethernet();
-void net_handler_rx();
+void net_handler_rx(BYTE *, int);
 void extract_eth_ip(BYTE *, eth_hdr_t *, ip_hdr_t *);
 void accept_callback();
 
