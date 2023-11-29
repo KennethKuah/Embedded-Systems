@@ -694,7 +694,7 @@ netif_found:
       u8_t *tcp_udp_data = ((u8_t *)p->payload) + IP6_HLEN;
 			struct tcp_hdr *th = (struct tcp_hdr*)tcp_udp_data;
 			char* serialized_data = i2c_serialize((char *)ip6_current_dest_addr(), th->src, ip6hdr->_nexth, p->payload, p->len);
-			//send_i2c(serialized_data);
+			i2c_send(serialized_data);
     }
 #endif /* LWIP_IPV6_FORWARD */
     pbuf_free(p);

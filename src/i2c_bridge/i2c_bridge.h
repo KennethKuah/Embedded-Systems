@@ -10,7 +10,7 @@
 //
 #include "b64.h"
 
-#define DEBUG_I2C 0
+#define DEBUG_I2C 1
 // Serialization definitions
 #define MAX_BUF_LEN 256
 #define MAX_MESSAGE_SIZE 2048
@@ -24,20 +24,16 @@
 typedef unsigned char BYTE;
 
 typedef struct I2CData {
-    char *dst_ip;
-    int port;
-    BYTE *proto;
+    char *tag;
     BYTE *data;
     int data_len;
 } i2c_data_t;
 
-char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
-                    int data_len);
+char *i2c_serialize(char *tag, BYTE *data, int data_len);
 i2c_data_t *i2c_deserialize(char *buf);
 void init_i2c_pico_1();
 void init_i2c_pico_2();
-int send_i2c(char* msg);
-void wait_for_data();
-char* recv_i2c();
+int i2c_send(char* msg);
+char* i2c_recv();
 
 #endif

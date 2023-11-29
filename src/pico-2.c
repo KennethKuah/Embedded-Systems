@@ -28,22 +28,21 @@ void dns_task(__unused void *params) {
     //setup_wifi();
     
     while (true) {
-        wait_for_data();
-        char* serialized_data = recv_i2c();
+        char* serialized_data = i2c_recv();
         i2c_data_t *i2c_data = i2c_deserialize(serialized_data);
         free(serialized_data);
         
         BYTE out_data[512];
 
-        printf("Received: %d bytes\n", i2c_data->data_len);
-        for(int i = 0; i < i2c_data->data_len; ++i) {
-            printf("%x ", i2c_data->data[i]);
-        }
+        printf("Received dns query: %d bytes\n", i2c_data->data_len);
+        // for(int i = 0; i < i2c_data->data_len; ++i) {
+        //     printf("%x ", i2c_data->data[i]);
+        // }
         int bytes_received = send_dns_req(i2c_data->data, i2c_data->data_len, out_data);
 
-        serialized_data = i2c_serialize(i2c_data->dst_ip, i2c_data->port, i2c_data->proto, out_data, bytes_received);
-        printf("sending: %s\n", serialized_data);
-        send_i2c(serialized_data);
+        serialized_data = i2c_serialize("dns", out_data, bytes_received);
+        printf("Sending dns response: %s\n", serialized_data);
+        i2c_send(serialized_data);
         free(serialized_data);
     }
 }
