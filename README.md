@@ -6,3 +6,9 @@ Rogue AP-ico is a tool utilizing the Raspberry Pi Pico W to perform an Evil Twin
 
 ## Flow Chart
 ![Flow Chart](https://github.com/KennethKuah/Embedded-Systems/blob/main/images/program_flowchart.png?raw=true)
+
+## Setup
+![Setup](https://github.com/KennethKuah/Embedded-Systems/blob/main/images/picow_setup.png?raw=true)
+
+## Pico-W Architecture
+![Pico-W Architecture](https://github.com/KennethKuah/Embedded-Systems/blob/main/images/picow_architecture.png?raw=true)
