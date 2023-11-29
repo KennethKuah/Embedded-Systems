@@ -153,3 +153,60 @@ void test_conns()
     printf("%s\n", data2);
     free(data2);
 }
+
+int send_dns_req(BYTE *data, int data_len, BYTE *out_data)
+{
+
+    int server_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+
+    if (server_sock < 0) {
+        printf("Failed to create socket!\n");
+    }
+    printf("socket created");
+
+    struct sockaddr_in server_addr;
+    unsigned long server_ip_numeric = inet_addr(DNS_IP);
+
+    memset(&server_addr, '0', sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(DNS_PORT);
+    server_addr.sin_addr.s_addr = server_ip_numeric;
+
+    if (connect(server_sock, (struct sockaddr *)&server_addr,
+                sizeof(server_addr)) < 0) {
+        printf("Failed to connect\n");
+    }
+
+    int bytes_sent = sendto(server_sock, data, data_len, MSG_WAITALL,
+           (const struct sockaddr *)&server_addr, sizeof(server_addr));
+
+    if(bytes_sent != data_len) {
+        printf("Send failed\n");
+    } else {
+        printf("Sent %d bytes\n", bytes_sent);
+    }
+
+    socklen_t fromlen = sizeof(server_addr);
+    int bytes_recv = recvfrom(server_sock, out_data, 512, MSG_WAITALL, (struct sockaddr *)&server_addr, &fromlen);
+
+    close(server_sock);
+
+    return bytes_recv;
+}
+
+void test_dns()
+{
+    BYTE data[58] = {0xba,0x87,0x01,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x01,0x12,0x63,0x6f,0x6e,0x6e,0x65,0x63,0x74,0x69,0x76,0x69,0x74,0x79,0x2d,0x63,0x68,0x65,0x63,0x6b,0x06,0x75,0x62,0x75,0x6e,0x74,0x75,0x03,0x63,0x6f,0x6d,0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x29,0x05,0xc0,0x00,0x00,0x00,0x00,0x00,0x00};
+    BYTE out_data[512];
+    int bytes_recv = send_dns_req(data, 58, out_data);
+
+    if(!bytes_recv) {
+        printf("Query error\n");
+    } else {
+        printf("Received %d bytes\n", bytes_recv);
+
+        for(int i = 0; i < bytes_recv; ++i) {
+            printf("%x ", out_data[i]);
+        }
+    }
+}
