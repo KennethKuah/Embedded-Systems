@@ -1,7 +1,7 @@
 #include "net_manager.h"
 
 eth_addr_t my_mac;
-eth_addr_t gateway_mac = ETH_ADDR(0xA6, 0x17, 0x1C, 0xEE, 0xB1, 0x6F);
+eth_addr_t gateway_mac = ETH_ADDR(0x5C, 0xA6, 0xE6, 0xFB, 0x24, 0x75);
 eth_addr_t pico1_mac = ETH_ADDR(0xD8, 0x3A, 0xDD, 0x45, 0xC8, 0xB7);
 ip4_addr_t my_ip;
 client_t *clients[5];
@@ -23,7 +23,7 @@ int setup_wifi()
         // Resolve necessary network info at setup-time
         my_ip = cyw43_state.netif[0].ip_addr;
         BYTE *hw_addr = cyw43_state.netif[0].hwaddr;
-        for(int i = 0; i < cyw43_state.netif[0].hwaddr_len; ++i) {
+        for (int i = 0; i < cyw43_state.netif[0].hwaddr_len; ++i) {
             my_mac.addr[i] = hw_addr[i];
         }
         printf("[+] Connected with IP %s\n", ip4addr_ntoa(&my_ip));
@@ -239,115 +239,43 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
         server_conn = insert_new_conn(client, src_port, dst_addr, dst_port);
     }
     else {
-        printf("[+] Found connection %s:%d\n", ip4addr_ntoa(&server_conn->dst_addr),
-               dst_port);
+        printf("[+] Found connection %s:%d\n",
+               ip4addr_ntoa(&server_conn->dst_addr), dst_port);
     }
 
-    BYTE *forwarded_pkt = (BYTE *)malloc(pkt_len);
+    int data_len = pkt_len - sizeof(eth_hdr_t) - sizeof(ip_hdr_t);
+    BYTE *data = (BYTE *)malloc(data_len);
 
     ip_addr_copy(ip_header.src, my_ip);
     ethernet_header.dest = gateway_mac;
     ethernet_header.src = my_mac;
 
-    memcpy(forwarded_pkt, &ethernet_header, sizeof(eth_hdr_t));
-    memcpy(forwarded_pkt + sizeof(eth_hdr_t), &ip_header, sizeof(ip_hdr_t));
-    memcpy(forwarded_pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t),
-           pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t),
-           pkt_len - sizeof(eth_hdr_t) - sizeof(ip_hdr_t));
+    memcpy(data, pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t), pkt_len);
 
-    for(int i = 0; i < pkt_len; ++i) {
-        printf("%02x ", forwarded_pkt[i]);
+    for (int i = 0; i < pkt_len; ++i) {
+        printf("%02x ", data[i]);
     }
 
-    struct pbuf *packet_buf = pbuf_alloc(PBUF_RAW, pkt_len, PBUF_RAM);
+    int server_sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 
-    set_payload(packet_buf, forwarded_pkt, pkt_len);
-    int d_err = cyw43_send_ethernet(&cyw43_state, CYW43_ITF_STA, packet_buf->tot_len, (void *)packet_buf, true);
-
-    if(d_err == 0)
-        printf("[+] Sent %d bytes\n", pkt_len);
-    
-    pbuf_free(packet_buf);
-    free(forwarded_pkt);
-
-    accept_callback();
-}
-
-void accept_callback(BYTE *pkt, int pkt_len) {
-    printf("Hello callback\n");
-
-    // Send I2C here
-    eth_hdr_t ethernet_header;
-    ip_hdr_t ip_header;
-    extract_eth_ip(pkt, &ethernet_header, &ip_header);
-
-    ip4_addr_t src_addr;
-    ip4_addr_copy(src_addr, ip_header.src);
-
-    ip4_addr_t dst_addr;
-    ip4_addr_copy(dst_addr, ip_header.dest);
-
-    int src_port;
-    int dst_port;
-
-    if (ip_header._proto == IP_PROTO_TCP) {
-        tcp_hdr_t tcp_header;
-        memcpy(&tcp_header, pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t),
-               sizeof(tcp_hdr_t));
-
-        src_port = htons(tcp_header.src);
-        dst_port = htons(tcp_header.dest);
+    if (server_sock < 0) {
+        printf("Failed to create socket\n");
     }
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(0);
+    inet_aton(ip4addr_ntoa(&dst_addr), &server_addr.sin_addr);
 
-    if (ip_header._proto == IP_PROTO_UDP) {
-        udp_hdr_t udp_header;
-        memcpy(&udp_header, pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t),
-               sizeof(udp_hdr_t));
-
-        src_port = htons(udp_header.src);
-        dst_port = htons(udp_header.dest);
-    }
-
-    // Client must already exist, otherwise don't forward
-    client_t *client = search_client(dst_addr);
-    if (!client) {
-        // If no client, don't forward to I2C
-        return;
+    int sent_bytes =
+        sendto(server_sock, data, pkt_len, 0, (struct sockaddr *)&server_addr,
+               sizeof(server_addr));
+    if (sent_bytes) {
+        printf("[+] Successfully sent %d bytes\n", sent_bytes);
     }
     else {
-        printf("Found client %s\n", ip4addr_ntoa(&client->client_addr));
+        printf("[!] Failed to send");
     }
 
-    // Connection must already exist, otherwise no mapping
-    conn_t *server_conn = search_conn(client, src_addr, src_port);
-
-    if (!server_conn) {
-        // If no connection, don't forward to I2C
-        return;
-    }
-
-    else {
-        printf("Found connection %s:%d\n", ip4addr_ntoa(&server_conn->dst_addr),
-               dst_port);
-    }
-
-    BYTE *forwarded_pkt = (BYTE *)malloc(pkt_len);
-
-    ip_addr_copy(ip_header.src, my_ip);
-    ethernet_header.dest = client->client_mac;
-    ethernet_header.src = pico1_mac;
-
-    memcpy(forwarded_pkt, &ethernet_header, sizeof(eth_hdr_t));
-    memcpy(forwarded_pkt + sizeof(eth_hdr_t), &ip_header, sizeof(ip_hdr_t));
-    memcpy(forwarded_pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t),
-           pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t),
-           pkt_len - sizeof(eth_hdr_t) - sizeof(ip_hdr_t));
-
-    for(int i = 0; i < pkt_len; ++i) {
-        printf("%02x ", forwarded_pkt[i]);
-    }
-
-    // send_i2c here
-
-    free(forwarded_pkt);
+    free(data);
 }
