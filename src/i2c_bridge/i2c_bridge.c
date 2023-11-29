@@ -44,7 +44,7 @@ char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
     sprintf(port_str, "%d", port);
     char data_len_str[10];
     sprintf(data_len_str, "%d", data_len);
-    strcat(buf, dst);
+    strcat(buf, dst_ip);
     strcat(buf, delimiter);
     strcat(buf, port_str);
     strcat(buf, delimiter);
@@ -235,10 +235,6 @@ void wait_for_data() {
 
 // Returns packet data as a string
 char* recv_i2c() {
-    while (!finishedReceiving)
-        tight_loop_contents();
-    
-    finishedReceiving = false;
     return packet_data;
 }
 

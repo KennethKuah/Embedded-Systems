@@ -25,7 +25,7 @@ void main_task(__unused void *params)
 }
 
 void dns_task(__unused void *params) {
-    setup_wifi();
+    //setup_wifi();
     
     while (true) {
         wait_for_data();

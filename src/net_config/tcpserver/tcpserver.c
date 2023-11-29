@@ -1,4 +1,5 @@
 #include "tcpserver.h"
+#include "lwip/tcp.h"
 
 TCP_SERVER_T* tcp_server_init(void) {
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
