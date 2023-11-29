@@ -36,6 +36,8 @@
 #include "i2c_bridge.h"
 
 #define MAX_CLIENTS 5
+#define MAX_CONCURRENT_CONNS 1024
+#define MAX_RECV_BUFFER 1024
 
 typedef unsigned char BYTE;
 typedef struct eth_hdr eth_hdr_t;

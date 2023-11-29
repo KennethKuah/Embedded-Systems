@@ -7,6 +7,9 @@ ip4_addr_t my_ip;
 client_t *clients[5];
 int client_idx = 0;
 
+int local_socks[MAX_CONCURRENT_CONNS];
+int local_socks_idx = 0;
+
 int setup_wifi()
 {
     if (cyw43_arch_init()) {
@@ -190,6 +193,20 @@ void extract_eth_ip(BYTE *pkt_buf, eth_hdr_t *eth_header, ip_hdr_t *ip_header)
     memcpy(ip_header, pkt_buf + sizeof(eth_hdr_t), sizeof(ip_hdr_t));
 }
 
+void poll_sockets() {
+
+    for(int i = 0; i < local_socks_idx; ++i) {
+        char recv_buffer[MAX_RECV_BUFFER];
+
+        memset(recv_buffer, 0, sizeof(recv_buffer));
+        int recv_bytes = recv(local_socks[i], recv_buffer, sizeof(recv_buffer), 0);
+
+        if(recv_bytes) {
+            // i2c_send here
+        }
+    }
+}
+
 void net_handler_rx(BYTE *pkt, int pkt_len)
 {
     eth_hdr_t ethernet_header;
@@ -243,6 +260,7 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
     //     printf("[+] Found connection %s:%d\n",
     //            ip4addr_ntoa(&server_conn->dst_addr), dst_port);
     // }
+
     printf("Reached net_handler\n");
     int data_len = pkt_len - sizeof(eth_hdr_t) - sizeof(ip_hdr_t);
     printf("Length: %d\n", data_len);
@@ -263,10 +281,10 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
     int server_sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 
     if (server_sock < 0) {
-        printf("Failed to create socket\n");
+        printf("[!] Failed to create socket\n");
     }
 
-    printf("Socket created");
+    printf("[+] Socket created\n");
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
@@ -280,9 +298,42 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
         printf("[+] Successfully sent %d bytes\n", sent_bytes);
     }
     else {
-        printf("[!] Failed to send");
+        printf("[!] Failed to send\n");
     }
 
     close(server_sock);
+
+    int client_sock = socket(AF_INET, SOCK_RAW, IP_PROTO_TCP);
+
+    if (client_sock < 0) {
+        printf("[!] Failed to create client socket\n");
+    }
+
+    struct sockaddr_in client_addr;
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = htons(src_port);
+    client_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+    if(bind(client_sock, (struct sockaddr *)&client_addr, sizeof(client_addr)) < 0) {
+        printf("[!] Failed to bind client socket!\n");
+    }
+
+    printf("Socket bound\n");
+
+    char recv_buffer[MAX_RECV_BUFFER];
+
+    int recv_bytes = 0;
+    while(true) {
+        recv_bytes = recv(client_sock, recv_buffer, sizeof(recv_buffer), 0);
+        if(recv_bytes)
+            break;
+    }
+
+    printf("[+] Received %d\n bytes", recv_bytes);
+
+    char *serialized_data = i2c_serialize(ip4addr_ntoa(&src_addr), recv_buffer, recv_bytes);
+    i2c_send(serialized_data);
+    free(serialized_data);
+    
+    close(client_sock);
     free(data);
 }
