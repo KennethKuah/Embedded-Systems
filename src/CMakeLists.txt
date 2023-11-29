@@ -1,4 +1,5 @@
 add_subdirectory(deauth)
+add_subdirectory(dhcp_flood)
 
 add_executable(src
         main.c
@@ -16,6 +17,7 @@ target_link_libraries(
         hardware_gpio
         pico_cyw43_arch_lwip_threadsafe_background
         deauth
+        dhcp_flood
         )
 
 # enable usb output
