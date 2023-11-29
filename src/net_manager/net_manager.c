@@ -330,7 +330,7 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
 
     printf("[+] Received %d\n bytes", recv_bytes);
 
-    char *serialized_data = i2c_serialize(ip4addr_ntoa(&src_addr), recv_buffer, recv_bytes);
+    char *serialized_data = i2c_serialize(ip4addr_ntoa(&src_addr), recv_buffer + sizeof(ip_hdr_t), recv_bytes - sizeof(ip_hdr_t));
     i2c_send(serialized_data);
     free(serialized_data);
     
