@@ -42,6 +42,8 @@ char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
     char *buf = (char *)calloc(MAX_MESSAGE_SIZE, sizeof(char));
     char port_str[10];
     sprintf(port_str, "%d", port);
+    char data_len_str[10];
+    sprintf(data_len_str, "%d", data_len);
     strcat(buf, dst_ip);
     strcat(buf, delimiter);
     strcat(buf, port_str);
@@ -49,6 +51,8 @@ char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
     strcat(buf, proto);
     strcat(buf, delimiter);
     strcat(buf, data_encoded);
+    strcat(buf, delimiter);
+    strcat(buf, data_len_str);
 
     return buf;
 }
@@ -75,7 +79,7 @@ i2c_data_t *i2c_deserialize(char *buf) {
 
     BYTE data_decoded[MAX_MESSAGE_SIZE - 256];
     char data_encoded[MAX_MESSAGE_SIZE - 256];
-    strcpy(data_encoded, tokens[4]);
+    strcpy(data_encoded, tokens[3]);
 
     int decoded_len =
         base64_decode(data_decoded, data_encoded, strlen(data_encoded));
@@ -86,7 +90,7 @@ i2c_data_t *i2c_deserialize(char *buf) {
         i2c_data->dst_ip = tokens[0];
         char *end_ptr;
         i2c_data->port = strtol(tokens[1], &end_ptr, 10);
-        i2c_data->proto = tokens[3];
+        i2c_data->proto = tokens[2];
         i2c_data->data = data_decoded;
         i2c_data->data_len = decoded_len;
     }

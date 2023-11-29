@@ -64,6 +64,10 @@
 #include LWIP_HOOK_FILENAME
 #endif
 
+#if NET_MGR
+#include "net_manager/net_manager.h"
+#endif
+
 /** Set this to 0 in the rare case of wanting to call an extra function to
  * generate the IP checksum (in contrast to calculating it on-the-fly). */
 #ifndef LWIP_INLINE_IP_CHKSUM
@@ -426,6 +430,10 @@ ip4_input_accept(struct netif *netif)
        ) {
       LWIP_DEBUGF(IP_DEBUG, ("ip4_input: packet accepted on interface %c%c\n",
                              netif->name[0], netif->name[1]));
+            printf("accept_callback here\n");
+#if NET_MGR
+            accept_callback();
+#endif
       /* accept on this netif */
       return 1;
     }
@@ -657,11 +665,8 @@ ip4_input(struct pbuf *p, struct netif *inp)
     /* non-broadcast packet? */
     if (!ip4_addr_isbroadcast(ip4_current_dest_addr(), inp)) {
       /* try to forward IP packet on (other) interfaces */
-    	// ip4_forward(p, (struct ip_hdr *)p->payload, inp);
-			u8_t *tcp_udp_data = ((u8_t *)p->payload) + IP_HLEN;
-			struct tcp_hdr *th = (struct tcp_hdr*)tcp_udp_data;
-			char* serialized_data = i2c_serialize((char *)ip_current_dest_addr(), th->src, IPH_PROTO(iphdr), p->payload, p->len);
-			send_i2c(serialized_data);
+        printf("at forward\n");
+    	ip4_forward(p, (struct ip_hdr *)p->payload, inp);
     } else
 #endif /* IP_FORWARD */
     {
