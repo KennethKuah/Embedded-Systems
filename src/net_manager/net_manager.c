@@ -223,44 +223,50 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
         dst_port = htons(udp_header.dest);
     }
 
-    // Check if client exists
-    client_t *client = search_client(src_addr);
-    if (!client) {
-        client = new_client(ethernet_header.src, src_addr);
-    }
-    else {
-        printf("[+] Found client %s\n", ip4addr_ntoa(&client->client_addr));
-    }
+    // // Check if client exists
+    // client_t *client = search_client(src_addr);
+    // printf("Searched client\n");
+    // if (!client) {
+    //     client = new_client(ethernet_header.src, src_addr);
+    // }
+    // else {
+    //     printf("[+] Found client %s\n", ip4addr_ntoa(&client->client_addr));
+    // }
 
-    // Check if connection exists
-    conn_t *server_conn = search_conn(client, dst_addr, dst_port);
-
-    if (!server_conn) {
-        server_conn = insert_new_conn(client, src_port, dst_addr, dst_port);
-    }
-    else {
-        printf("[+] Found connection %s:%d\n",
-               ip4addr_ntoa(&server_conn->dst_addr), dst_port);
-    }
-
+    // // Check if connection exists
+    // conn_t *server_conn = search_conn(client, dst_addr, dst_port);
+    // printf("Searched conn\n");
+    // if (!server_conn) {
+    //     server_conn = insert_new_conn(client, src_port, dst_addr, dst_port);
+    // }
+    // else {
+    //     printf("[+] Found connection %s:%d\n",
+    //            ip4addr_ntoa(&server_conn->dst_addr), dst_port);
+    // }
+    printf("Reached net_handler\n");
     int data_len = pkt_len - sizeof(eth_hdr_t) - sizeof(ip_hdr_t);
+    printf("Length: %d\n", data_len);
     BYTE *data = (BYTE *)malloc(data_len);
+
+    printf("Allocated for data\n");
 
     ip_addr_copy(ip_header.src, my_ip);
     ethernet_header.dest = gateway_mac;
     ethernet_header.src = my_mac;
 
-    memcpy(data, pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t), pkt_len);
+    memcpy(data, pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t), data_len);
 
-    for (int i = 0; i < pkt_len; ++i) {
+    for (int i = 0; i < data_len; ++i) {
         printf("%02x ", data[i]);
     }
-
+    printf("\n");
     int server_sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 
     if (server_sock < 0) {
         printf("Failed to create socket\n");
     }
+
+    printf("Socket created");
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
@@ -268,7 +274,7 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
     inet_aton(ip4addr_ntoa(&dst_addr), &server_addr.sin_addr);
 
     int sent_bytes =
-        sendto(server_sock, data, pkt_len, 0, (struct sockaddr *)&server_addr,
+        sendto(server_sock, data, data_len, 0, (struct sockaddr *)&server_addr,
                sizeof(server_addr));
     if (sent_bytes) {
         printf("[+] Successfully sent %d bytes\n", sent_bytes);
@@ -277,5 +283,6 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
         printf("[!] Failed to send");
     }
 
+    close(server_sock);
     free(data);
 }

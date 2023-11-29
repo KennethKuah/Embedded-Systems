@@ -83,8 +83,7 @@ target_compile_definitions(pico-2 PRIVATE
 target_link_libraries(pico-2
         pico_stdlib
         hardware_i2c
-        pico_cyw43_arch_sys_freertos
-        pico_lwip_custom # modified lwip library
+        pico_cyw43_arch_lwip_sys_freertos
         pico_lwip_iperf
         pico_i2c_slave
         FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
