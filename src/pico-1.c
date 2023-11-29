@@ -23,28 +23,29 @@ bool comonplease = false;
 void client_task(__unused void *params)
 {
     vTaskDelay(500);
-    int server_sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
-    struct sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(0);
-    memset(&server_addr, 0, sizeof(server_addr));
     
-    if (server_sock < 0) 
-        printf("Failed to create socket\n");
-    else
-        printf("Socket created");
 
     while(true) {
         char *serialized_data = i2c_recv();
         i2c_data_t* i2c_data = i2c_deserialize(serialized_data);
         free(serialized_data);
 
+        int server_sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+        struct sockaddr_in client_addr;
+        memset(&client_addr, 0, sizeof(client_addr));
+        client_addr.sin_family = AF_INET;
+        client_addr.sin_port = htons(0);
+        
+        if (server_sock < 0) 
+            printf("Failed to create socket\n");
+        else
+            printf("Socket created");
         char* dst_addr = i2c_data->tag;
-        inet_aton(dst_addr, &server_addr.sin_addr);
+        inet_aton(dst_addr, &client_addr.sin_addr);
 
         int sent_bytes =
-        sendto(server_sock, i2c_data->data, i2c_data->data_len, 0, (struct sockaddr *)&server_addr,
-                sizeof(server_addr));
+        sendto(server_sock, i2c_data->data, i2c_data->data_len, 0, (struct sockaddr *)&client_addr,
+                sizeof(client_addr));
         if (sent_bytes) {
             printf("[+] Successfully sent %d bytes\n", sent_bytes);
         }
@@ -52,6 +53,7 @@ void client_task(__unused void *params)
             printf("[!] Failed to send");
         }
         free(i2c_data);
+        close(server_sock);
     }
 }
 

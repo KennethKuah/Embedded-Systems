@@ -240,6 +240,12 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
         dst_port = htons(udp_header.dest);
     }
 
+    ip_addr_t filter_ip;
+    ipaddr_aton("34.223.124.45", &filter_ip);
+
+    if (!ip4_addr_eq(&filter_ip, &dst_addr))
+        return;
+
     // // Check if client exists
     // client_t *client = search_client(src_addr);
     // printf("Searched client\n");
@@ -262,9 +268,13 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
     // }
 
     printf("Reached net_handler\n");
+
+    for(int i = 0; i < pkt_len; ++i) {
+        printf("%02x ", pkt[i]);
+    }
+    printf("\n");
     int data_len = pkt_len - sizeof(eth_hdr_t) - sizeof(ip_hdr_t);
     printf("Length: %d\n", data_len);
-    BYTE *data = (BYTE *)malloc(data_len);
 
     printf("Allocated for data\n");
 
@@ -272,18 +282,18 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
     ethernet_header.dest = gateway_mac;
     ethernet_header.src = my_mac;
 
-    memcpy(data, pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t), data_len);
-
     for (int i = 0; i < data_len; ++i) {
-        printf("%02x ", data[i]);
+        printf("%02x ", (pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t))[i]);
     }
     printf("\n");
     int server_sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 
+    BYTE *data = (BYTE *)malloc(pkt_len);
+
     if (server_sock < 0) {
         printf("[!] Failed to create socket\n");
     }
-
+    memcpy(data, pkt + sizeof(eth_hdr_t) + sizeof(ip_hdr_t), data_len);
     printf("[+] Socket created\n");
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
@@ -300,7 +310,7 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
     else {
         printf("[!] Failed to send\n");
     }
-
+    free(data);
     close(server_sock);
 
     int client_sock = socket(AF_INET, SOCK_RAW, IP_PROTO_TCP);
@@ -323,7 +333,7 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
 
     int recv_bytes = 0;
     while(true) {
-        recv_bytes = recv(client_sock, recv_buffer, sizeof(recv_buffer), 0);
+        recv_bytes = recv(client_sock, recv_buffer, MAX_RECV_BUFFER, 0);
         if(recv_bytes)
             break;
     }
@@ -335,5 +345,4 @@ void net_handler_rx(BYTE *pkt, int pkt_len)
     free(serialized_data);
     
     close(client_sock);
-    free(data);
 }

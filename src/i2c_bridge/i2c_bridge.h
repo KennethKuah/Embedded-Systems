@@ -13,7 +13,7 @@
 #define DEBUG_I2C 1
 // Serialization definitions
 #define MAX_BUF_LEN 256
-#define MAX_MESSAGE_SIZE 2048
+#define MAX_MESSAGE_SIZE 1024
 #define DELIMITER ":"
 // I2C definitions
 #define I2C_MAX_BUF_LEN 512

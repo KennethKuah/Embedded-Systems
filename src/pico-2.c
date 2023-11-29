@@ -30,8 +30,9 @@ void dns_task(__unused void *params) {
     while (true) {
         printf("waiting\n");
         char* serialized_data = i2c_recv();
+        printf("data-> %s\n", serialized_data);
         i2c_data_t *i2c_data = i2c_deserialize(serialized_data);
-        // free(serialized_data);
+        
         
         // BYTE out_data[512];
 
