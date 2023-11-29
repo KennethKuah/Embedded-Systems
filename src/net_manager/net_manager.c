@@ -134,22 +134,19 @@ void test_conns()
     }
 
     BYTE test[8] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
-    char *data = i2c_serialize("testing.com", 8000, "TCP", test, sizeof(test));
+    char *data = i2c_serialize("testing", test, sizeof(test));
 
     free(data);
 
     printf("Data: %s\n", data);
 
-    i2c_data_t *i2c_data = i2c_deserialize("testing.com:8000:TCP:dGVzdA==:4");
-
-    printf("%s\n", i2c_data->dst_ip);
-    printf("%d\n", i2c_data->port);
+    i2c_data_t *i2c_data = i2c_deserialize("testing.com:dGVzdA==:4");
 
     for(int i = 0; i < i2c_data->data_len; ++i) {
         printf("%x ", i2c_data->data[i]);
     }
 
-    char *data2 = i2c_serialize("testing2.com", 8080, "UDP", test, sizeof(test));
+    char *data2 = i2c_serialize("testing2.com", test, sizeof(test));
     printf("%s\n", data2);
     free(data2);
 }

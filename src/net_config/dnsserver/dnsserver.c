@@ -185,7 +185,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     }
 
     // Query Pico-2 for the DNS answer
-    char* serialized_data = i2c_serialize(dns_domain, 53, "UDP", dns_msg, msg_len);
+    char* serialized_data = i2c_serialize("dns", dns_msg, msg_len);
     // printf("serialized data: %s\n", serialized_data);
     i2c_send(serialized_data);
     free(serialized_data);

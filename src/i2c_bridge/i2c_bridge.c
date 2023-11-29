@@ -32,27 +32,18 @@ char* packet_data = NULL;
 // Serialises data that is transmitted via I2C.
 // Buffer is dynamically allocated, meaning it must be freed after its used
 // Returns a string in the following format
-// `dst_ip:port:protocol:base64_data`
-// \param dst_ip destination IP string
-// \param port source port of connection
-// \param proto protocol string
+// `tag:base64_data:base64_data_length`
+// \param tag the type of data that is being sent (e.g. frame, dns);
 // \param data data to be encoded in base64
 // \param data_len length of data to be encoded
-char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
-                    int data_len) {
+char *i2c_serialize(char *tag, BYTE *data, int data_len) {
     char data_encoded[MAX_MESSAGE_SIZE - 256];
-    const char *delimiter = ":";
+    const char *delimiter = DELIMITER;
     int encoded_len = base64_encode(data_encoded, data, data_len);
     char *buf = (char *)calloc(MAX_MESSAGE_SIZE, sizeof(char));
-    char port_str[10];
-    sprintf(port_str, "%d", port);
     char data_len_str[10];
     sprintf(data_len_str, "%d", data_len);
-    strcat(buf, dst_ip);
-    strcat(buf, delimiter);
-    strcat(buf, port_str);
-    strcat(buf, delimiter);
-    strcat(buf, proto);
+    strcat(buf, tag);
     strcat(buf, delimiter);
     strcat(buf, data_encoded);
     strcat(buf, delimiter);
@@ -63,13 +54,12 @@ char *i2c_serialize(char *dst_ip, int port, BYTE *proto, BYTE *data,
 
 // Deserializes data that is transmitted via I2C
 // Expects a string in the following format
-// `dst_ip:port:protocol:base64_data`
+// `tag:base64_data:base64_data_length`
 // \param buf serialized data received from I2C channel
-i2c_data_t *i2c_deserialize(char *buf)
-{
+i2c_data_t *i2c_deserialize(char *buf) {
     int idx = 0;
     int oset = 0;
-    char tokens[5][MAX_MESSAGE_SIZE / 4];
+    char tokens[3][MAX_MESSAGE_SIZE / 4];
     for (int i = 0; i <= strlen(buf); ++i) {
         if (buf[i] == ':') {
             // null terminate token
@@ -85,17 +75,14 @@ i2c_data_t *i2c_deserialize(char *buf)
     char data_decoded[MAX_MESSAGE_SIZE - 256];
     char data_encoded[MAX_MESSAGE_SIZE - 256];
 
-    strcpy(data_encoded, tokens[3]);
+    strcpy(data_encoded, tokens[1]);
     int decoded_len =
         base64_decode(data_decoded, data_encoded, strlen(data_encoded));
 
     i2c_data_t *i2c_data = (i2c_data_t *)malloc(sizeof(i2c_data_t));
 
     if (i2c_data != NULL) {
-        i2c_data->dst_ip = tokens[0];
-        char *end_ptr;
-        i2c_data->port = strtol(tokens[1], &end_ptr, 10);
-        i2c_data->proto = tokens[3];
+        i2c_data->tag = tokens[0];
         i2c_data->data = data_decoded;
         i2c_data->data_len = decoded_len;
     }
