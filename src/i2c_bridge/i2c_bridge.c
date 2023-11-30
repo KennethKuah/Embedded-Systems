@@ -39,12 +39,14 @@ char* packet_data = NULL;
 char *i2c_serialize(char *tag, BYTE *data, int data_len) {
     char data_encoded[MAX_MESSAGE_SIZE - 256];
     const char *delimiter = DELIMITER;
-    int encoded_len = base64_encode(data_encoded, data, data_len);
+    int encoded_len;
     char *buf = (char *)calloc(MAX_MESSAGE_SIZE, sizeof(char));
     char data_len_str[10];
     sprintf(data_len_str, "%d", data_len);
     strcat(buf, tag);
     strcat(buf, delimiter);
+    // Encode Packet Payload
+    encoded_len = base64_encode(data_encoded, data, data_len);
     strcat(buf, data_encoded);
     strcat(buf, delimiter);
     strcat(buf, data_len_str);
@@ -129,8 +131,7 @@ static void read_data_from_slave(i2c_inst_t *i2c, uint8_t *data, size_t data_siz
     // absolute_time_t curr_time = get_absolute_time();
     // absolute_time_t timeout = delayed_by_ms(curr_time, 2000);
     int bytes_written = 0;
-    bytes_written = i2c_read_blocking(i2c, master_address, data, data_size, false);
-    if (strcmp((const char*)data, "ACK") == 0) {
+    if (strcmp((const char*)data, ack) == 0) {
 #if DEBUG_I2C
         printf("Acknowledgment received from slave: %s\n", data);
 #endif

@@ -38,6 +38,8 @@
 #define MAX_CLIENTS 5
 #define MAX_CONCURRENT_CONNS 1024
 #define MAX_RECV_BUFFER 1024
+#define DNS_IP "8.8.8.8"
+#define DNS_PORT 53
 
 typedef unsigned char BYTE;
 typedef struct eth_hdr eth_hdr_t;
@@ -79,5 +81,7 @@ void test_send_ethernet();
 void net_handler_rx(BYTE *, int);
 void extract_eth_ip(BYTE *, eth_hdr_t *, ip_hdr_t *);
 void accept_callback();
+int send_dns_req(BYTE *, int, BYTE *);
+void test_dns();
 
 #endif

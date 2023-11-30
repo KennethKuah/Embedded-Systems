@@ -45,7 +45,6 @@ void dns_task(__unused void *params) {
         // serialized_data = i2c_serialize("dns", out_data, bytes_received);
         // printf("Sending dns response: %s\n", serialized_data);
         net_handler_rx(i2c_data->data, i2c_data->data_len);
-        // i2c_send(serialized_data);
         free(serialized_data);
     }
 }
