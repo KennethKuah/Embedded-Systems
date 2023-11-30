@@ -9,6 +9,8 @@
 
 #include "lwip/ip_addr.h"
 
+#define MAX_DOMAIN_LEN 253
+
 typedef struct dns_server_t_ {
     struct udp_pcb *udp;
      ip_addr_t ip;

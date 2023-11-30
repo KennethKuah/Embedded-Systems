@@ -5,17 +5,12 @@
 #include "pico/stdlib.h"
 // FreeRTOS libraries
 #include "FreeRTOS.h"
-#include "message_buffer.h"
 #include "task.h"
 // custom drivers/helper libraries
 #include "net_config.h"
 #include "i2c_bridge.h"
 
-#ifndef RUN_FREERTOS_ON_CORE
-#define RUN_FREERTOS_ON_CORE 0
-#endif
-
-#define SKIP_SCAN 0
+#define SKIP_SCAN 1
 
 #define WIFI_SCAN_TASK_PRIORITY				( tskIDLE_PRIORITY + 1UL )
 #define SERVER_TASK_PRIORITY				( tskIDLE_PRIORITY + 2UL )
