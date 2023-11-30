@@ -11,7 +11,8 @@
 #include "net_manager.h"
 #include "i2c_bridge.h"
 
-#define SKIP_SCAN 1
+// Flag to set for skipping the WiFi Scan
+#define SKIP_SCAN 0
 
 #define CLIENT_TASK_PRIORITY				( tskIDLE_PRIORITY + 1UL )
 #define SERVER_TASK_PRIORITY				( tskIDLE_PRIORITY + 2UL )
@@ -22,9 +23,14 @@ bool comonplease = false;
 
 void client_task(__unused void *params)
 {
-    vTaskDelay(500);
+    // Wait will AP has been configured
+    while (!ap_configured) {
+        vTaskDelay(200);
+    }
     
-
+    // Upon receiving data from I2C channel, creates a socket to original 
+    // source destination port and sends the data back to the client, 
+    // in order to simulate the internet connection
     while(true) {
         char *serialized_data = i2c_recv();
         i2c_data_t* i2c_data = i2c_deserialize(serialized_data);
@@ -104,10 +110,10 @@ void vLaunch(void) {
 }
 
 int main() {
-    // main body of code
+    // Initialization
     stdio_init_all();
     init_i2c_pico_1();
-    sleep_ms(3000);
+    sleep_ms(2000);
     printf("Starting FreeRTOS on core 0:\n");
 
     vLaunch();

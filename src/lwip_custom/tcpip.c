@@ -289,6 +289,7 @@ err_t
 tcpip_input(struct pbuf *p, struct netif *inp)
 {
 #if SD_MOUNTED
+  // capture packet and write to pcap file
 	write_packet(p);
 #endif
 

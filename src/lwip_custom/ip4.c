@@ -68,88 +68,6 @@
 
 extern cyw43_t cyw43_state;
 
-// err_t send_custom_packet(BYTE *p, )
-// {
-//   for (size_t i = 0; i < data_length; ++i) {
-//       printf("%02X ", buffer[i]);
-//   }
-//   printf("\n");
-// }
-
-err_t send_custom_packet(struct pbuf* p)
-{
-  /* send the packet */
-  for (struct pbuf* q = p; q != NULL; q = q->next) {
-        printf("pbuf payload length: %u\n", q->len);
-
-        // Print the payload data byte by byte
-        for (uint16_t i = 0; i < q->len; ++i) {
-            printf("%02X ", ((uint8_t *)q->payload)[i]);
-            if ((i + 1) % 16 == 0) {
-                printf("\n");
-            }
-        }
-        printf("\n");
-  }
-  printf("Start processing\n");
-  // Get AP MAC address
-  struct eth_hdr *ethhdr;
-  struct ip_hdr *iphdr;
-  ip4_addr_t ipaddr;
-  struct eth_addr dest_mac = ETH_ADDR(0xB8, 0x08, 0xCF, 0xA8, 0xB0, 0x9C);
-
-  // Calculate the total length of the pbuf chain
-  uint16_t total_length = pbuf_clen(p);
-  uint16_t data_length = p->tot_len;
-
-  // Change Source MAC address for packet
-  ethhdr = (struct eth_hdr *)p->payload;
-  struct pbuf* ptmp = pbuf_alloc(PBUF_RAW, data_length, PBUF_RAM);
-  pbuf_copy(ptmp, p);
-  pbuf_remove_header(ptmp, SIZEOF_ETH_HDR);
-  iphdr = (struct ip_hdr *)ptmp->payload;
-  memcpy(ethhdr->src.addr, cyw43_state.mac, ETH_HWADDR_LEN);
-  ethhdr->dest = dest_mac;
-  printf("IP Header:\n");
-  printf("Version: %u\n", (unsigned int)IPH_V(iphdr));
-  printf("Header Length: %u\n", (unsigned int)IPH_HL(iphdr));
-  printf("Type of Service (TOS): %u\n", (unsigned int)IPH_TOS(iphdr));
-  printf("Total Length: %u\n", lwip_ntohs(IPH_LEN(iphdr)));
-  printf("Identification: %u\n", lwip_ntohs(IPH_ID(iphdr)));
-  printf("Time To Live (TTL): %u\n", (unsigned int)IPH_TTL(iphdr));
-  printf("Protocol: %u\n", (unsigned int)IPH_PROTO(iphdr));
-  printf("Checksum: 0x%04X\n", lwip_ntohs(IPH_CHKSUM(iphdr)));
-  IP4_ADDR(&ipaddr, 192, 168, 4, 1);
-  iphdr->src.addr = ipaddr.addr;
-  //memcpy(iphdr->src.addr, ipaddr.addr, sizeof(ipaddr.addr));
-  IP4_ADDR(&ipaddr, 192, 168, 4, 16);
-  iphdr->dest.addr = ipaddr.addr;
-  //memcpy(iphdr->dest.addr, ipaddr.addr, sizeof(ipaddr.addr));
-  memcpy(p->payload, ethhdr, SIZEOF_ETH_HDR);
-  memcpy((u8_t*)p->payload + SIZEOF_ETH_HDR, iphdr, IP_HLEN);
-
-  // Allocate memory for the target array
-  uint8_t* buffer = (uint8_t*)malloc(data_length);
-  if (buffer != NULL) {
-      // Pointer to iterate over the pbuf chain
-      uint8_t* ptr = buffer;
-      struct pbuf* q;
-
-      // Iterate through the pbuf chain
-      for (q = p; q != NULL; q = q->next) {
-          // Copy data from pbuf to the target array
-          memcpy(ptr, q->payload, q->len);
-          ptr += q->len;
-      }
-  }
-  printf("After processing\n");
-  /* send the packet */
-  for (size_t i = 0; i < data_length; ++i) {
-        printf("%02X ", buffer[i]);
-    }
-    printf("\n");
-  return cyw43_send_ethernet(&cyw43_state, CYW43_ITF_AP, p->tot_len, buffer, false);
-}
 void check_p(struct pbuf* p)
 {}
 void printpp(struct pbuf* p)
@@ -860,47 +778,22 @@ ip4_input(struct pbuf *p, struct netif *inp)
 #if IP_FORWARD
     /* non-broadcast packet? */
     if (!ip4_addr_isbroadcast(ip4_current_dest_addr(), inp)) {
-        /* try to forward IP packet on (other) interfaces */
-        // u8_t *tcp_udp_data = ((u8_t *)p->payload) + IP_HLEN;
-        // struct tcp_hdr *th = (struct tcp_hdr*)tcp_udp_data;
-
-        //IPH_PROTO(iphdr)
-        //cyw43_send_ethernet(&cyw43_state, CYW43_ITF_AP, sizeof(p), (uint8_t *)p, false);
-        printf("\nforwardf\n\n");
+        /* Forward packets who's destination IP are not us to I2C channel */
         char *proto;
         if (IPH_PROTO(iphdr) == 6)
         {
           proto = "tcp";
           char* serialized_data = i2c_serialize("frame", send_data, len);
-          //char* serialized_data = i2c_serialize(ip4addr_ntoa(ip_current_dest_addr()), th->src, proto, whole_packet->payload, whole_packet->len);
-          //printf("Send successfully: %d\n", send_custom_packet(whole_packet));
           i2c_send(serialized_data);
           free(serialized_data);
-          printf("\nSent\n\n");
-          
         }
         else if (IPH_PROTO(iphdr) == 17)
         {
           proto = "udp";
-          
+          // char* serialized_data = i2c_serialize("frame", send_data, len);
+          // i2c_send(serialized_data);
+          // free(serialized_data);
         }
-        // else
-        //   proto = "unknown";
-        
-        // Add get everything in case whole_packet->payload is not everything
-        // Get everything by looping through whole_packet->next
-
-        // char *recvdata = i2c_recv();
-        // i2c_data_t *deserialized_data = i2c_deserialize(recvdata);
-        // free(recvdata);
-        // printf("Deseriaized data\n");
-        // for (size_t i = 0; i < deserialized_data->data_len; ++i) {
-        //   printf("%02X ", deserialized_data->data[i]);
-        // }
-        // printf("\n");
-        // //send_custom_packet(deserialized_data->data);
-        // free(deserialized_data);
-        //ip4_forward(p, (struct ip_hdr *)p->payload, inp);
     } else
 #endif /* IP_FORWARD */
     {
