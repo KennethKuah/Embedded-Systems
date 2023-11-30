@@ -39,12 +39,14 @@ char* packet_data = NULL;
 char *i2c_serialize(char *tag, BYTE *data, int data_len) {
     char data_encoded[MAX_MESSAGE_SIZE - 256];
     const char *delimiter = DELIMITER;
-    int encoded_len = base64_encode(data_encoded, data, data_len);
+    int encoded_len;
     char *buf = (char *)calloc(MAX_MESSAGE_SIZE, sizeof(char));
     char data_len_str[10];
     sprintf(data_len_str, "%d", data_len);
     strcat(buf, tag);
     strcat(buf, delimiter);
+    // Encode Packet Payload
+    encoded_len = base64_encode(data_encoded, data, data_len);
     strcat(buf, data_encoded);
     strcat(buf, delimiter);
     strcat(buf, data_len_str);
