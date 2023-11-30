@@ -28,21 +28,23 @@ void dns_task(__unused void *params) {
     setup_wifi();
     
     while (true) {
+        printf("waiting\n");
         char* serialized_data = i2c_recv();
+        printf("data-> %s\n", serialized_data);
         i2c_data_t *i2c_data = i2c_deserialize(serialized_data);
-        free(serialized_data);
         
-        BYTE out_data[512];
+        
+        // BYTE out_data[512];
 
-        printf("Received dns query: %d bytes\n", i2c_data->data_len);
-        // for(int i = 0; i < i2c_data->data_len; ++i) {
-        //     printf("%x ", i2c_data->data[i]);
-        // }
-        int bytes_received = send_dns_req(i2c_data->data, i2c_data->data_len, out_data);
+        // printf("Received dns query: %d bytes\n", i2c_data->data_len);
+        // // for(int i = 0; i < i2c_data->data_len; ++i) {
+        // //     printf("%x ", i2c_data->data[i]);
+        // // }
+        // int bytes_received = send_dns_req(i2c_data->data, i2c_data->data_len, out_data);
 
-        serialized_data = i2c_serialize("dns", out_data, bytes_received);
-        printf("Sending dns response: %s\n", serialized_data);
-        i2c_send(serialized_data);
+        // serialized_data = i2c_serialize("dns", out_data, bytes_received);
+        // printf("Sending dns response: %s\n", serialized_data);
+        net_handler_rx(i2c_data->data, i2c_data->data_len);
         free(serialized_data);
     }
 }

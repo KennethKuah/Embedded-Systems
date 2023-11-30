@@ -12,6 +12,7 @@ add_executable(pico-1
         net_config/net_config.c
         net_config/dhcpserver/dhcpserver.c
         net_config/dnsserver/dnsserver.c
+        net_manager/net_manager.c
         net_config/tcpserver/tcpserver.c
         pcap_helper/sd_card.c
         pcap_helper/pcap.c
@@ -26,11 +27,14 @@ target_include_directories(pico-1 PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/net_config/dhcpserver
         ${CMAKE_CURRENT_LIST_DIR}/net_config/dnsserver
         ${CMAKE_CURRENT_LIST_DIR}/net_config/tcpserver
+        ${CMAKE_CURRENT_LIST_DIR}/net_manager
         ${CMAKE_CURRENT_LIST_DIR}/pcap_helper
 )
 
 # pico 1 target compile definitions
 target_compile_definitions(pico-1 PRIVATE
+        WIFI_SSID=\"${WIFI_SSID}\"
+        WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
         IP_FORWARD=1
         SD_MOUNTED=0
         PCAP_OVERWRITE=0
@@ -55,6 +59,8 @@ add_executable(pico-2
         common/b64.c
         i2c_bridge/i2c_bridge.c
         net_manager/net_manager.c
+        pcap_helper/sd_card.c
+        pcap_helper/pcap.c
 )
 
 # pico 2 include directories for referencing driver/helper header files
@@ -71,6 +77,10 @@ target_compile_definitions(pico-2 PRIVATE
         WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
         LWIP_SOCKET=1           # we need the socket API (generally this would be in your lwipopts.h)
         LWIP_COMPAT_SOCKET=1
+        IP_FORWARD=1
+        NET_MGR=1
+        SD_MOUNTED=0
+        PCAP_OVERWRITE=0
 )
 
 # pico 2 common dependencies
@@ -81,6 +91,7 @@ target_link_libraries(pico-2
         pico_lwip_iperf
         pico_i2c_slave
         FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
+        FatFs_SPI # SD Card library
 )
 
 # enable usb output

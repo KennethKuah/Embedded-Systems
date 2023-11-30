@@ -131,7 +131,6 @@ static void read_data_from_slave(i2c_inst_t *i2c, uint8_t *data, size_t data_siz
     // absolute_time_t curr_time = get_absolute_time();
     // absolute_time_t timeout = delayed_by_ms(curr_time, 2000);
     int bytes_written = 0;
-    bytes_written = i2c_read_blocking(i2c, master_address, data, data_size, false);
     if (strcmp((const char*)data, ack) == 0) {
 #if DEBUG_I2C
         printf("Acknowledgment received from slave: %s\n", data);
