@@ -14,10 +14,19 @@ Pico 1 and Pico 2 will have to be connected on the following GPIOs to faciliate 
 |GP7|GP7|
 
 Pico 1 and Pico 3 will have to be connected on the following GPIOs to facilitate the conduct of the deauth attack.
-|Pico 1 Pins|Pico 2 Pins|
+|Pico 1 Pins|Pico 3 Pins|
 |-|-|
 |GP8|GP9|
 |GP9|GP8|
+
+Additonally, Pico 3 will need to be connected to the ESP01 Wi-Fi module on the following pins to utilize it:
+|Pico 3 Pins|ESP01 Pins|
+|-|-|
+|GP0|RXD|
+|GP1|TXD|
+|3v3|VCC|
+|3v3_EN|CHEN / CHPD|
+|GND|GND|
 
 ![Setup](images/picow_setup.png)
 
